@@ -5,6 +5,12 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/useAuth";
 import { db } from "@/lib/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import supabase from "@/lib/supabase";
+
+const HAS_SUPABASE =
+  typeof process.env.NEXT_PUBLIC_SUPABASE_URL !== "undefined" &&
+  process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export default function CadastroLogistaPage() {
   const router = useRouter();
@@ -38,31 +44,72 @@ export default function CadastroLogistaPage() {
     try {
       // cria usuário com role 'logista'
       const cred = await signUp(email, password, "logista");
-      // se precisar gravar dados adicionais da loja no Firestore
-      // o signUp atual cria users/<uid> com role; aqui gravamos stores/<uid>
+      
+      // Salvar dados da loja e perfil no backend apropriado
       try {
-        const uid = (cred as any)?.user?.uid;
+        const uid = (cred as any)?.user?.uid || (cred as any)?.user?.id;
         if (uid) {
-          await setDoc(doc(db, "stores", uid), {
-            ownerUid: uid,
-            storeName,
-            ownerName,
-            phone,
-            ownerEmail: email,
-            status: "pending",
-            createdAt: serverTimestamp(),
-          });
+          if (HAS_SUPABASE) {
+            // Supabase: atualizar profiles + criar stores
+            console.log("[cadastro-logista] Salvando no Supabase:", uid);
+            
+            // Atualizar profiles
+            const { error: profileError } = await supabase
+              .from("profiles")
+              .upsert({
+                id: uid,
+                email,
+                display_name: ownerName,
+                role: "logista",
+              });
+            if (profileError) {
+              console.warn("Erro ao salvar profile no Supabase:", profileError);
+            }
+
+            // Criar store
+            const { error: storeError } = await supabase
+              .from("stores")
+              .insert({
+                owner_id: uid,
+                store_name: storeName,
+                phone,
+                status: "pending",
+              });
+            if (storeError) {
+              console.warn("Erro ao salvar store no Supabase:", storeError);
+              setError("Não foi possível salvar dados da loja no Supabase.");
+              setLoading(false);
+              return;
+            }
+          } else {
+            // Firebase: salvar em users e stores collections
+            console.log("[cadastro-logista] Salvando no Firebase:", uid);
+            
+            await setDoc(doc(db, "users", uid), {
+              email,
+              role: "logista",
+              name: ownerName,
+              createdAt: new Date().toISOString(),
+            });
+
+            await setDoc(doc(db, "stores", uid), {
+              ownerUid: uid,
+              storeName,
+              ownerName,
+              phone,
+              ownerEmail: email,
+              status: "pending",
+              createdAt: serverTimestamp(),
+            });
+          }
         }
       } catch (e: any) {
-        // log detalhado para ajudar debug (console + mensagem amigável ao usuário)
         console.error("Não foi possível salvar dados da loja:", e?.code, e?.message || e);
         if (e?.code === "permission-denied" || e?.code === "auth/insufficient-permission") {
-          setError("Permissão negada ao salvar dados da loja. Verifique as regras do Firestore (authorized domains / regras de escrita).");
+          setError("Permissão negada ao salvar dados da loja.");
         } else {
           setError("Não foi possível salvar dados da loja: " + (e?.message || "erro desconhecido"));
         }
-        // não interrompe o fluxo principal do cadastro (o usuário já foi criado),
-        // mas evita redirecionar sem informar o problema
         setLoading(false);
         return;
       }
@@ -76,7 +123,6 @@ export default function CadastroLogistaPage() {
       } else if (err?.code === "auth/weak-password") {
         setError("Senha muito fraca. Use ao menos 6 caracteres.");
       } else {
-        // mostrar código de erro quando disponível
         setError((err?.code ? `${err.code} — ` : "") + (err?.message || "Erro ao cadastrar lojista"));
       }
     } finally {

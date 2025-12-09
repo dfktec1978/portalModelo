@@ -1,34 +1,15 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/useAuth";
-import { db } from "@/lib/firebase";
 import {
-  collection,
-  addDoc,
-  serverTimestamp,
-  query,
-  orderBy,
-  onSnapshot,
-  doc,
-  updateDoc,
-  deleteDoc,
-  Timestamp,
-} from "firebase/firestore";
+  subscribeToAdminNews,
+  createNews,
+  updateNews,
+  deleteNews,
+  type NewsDoc,
+} from "@/lib/adminQueries";
 import { storage } from "@/lib/firebase";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
-
-type NewsDoc = {
-  id: string;
-  title: string;
-  summary?: string;
-  link?: string;
-  source?: string;
-  imageUrls?: string[];
-  imageData?: string[]; // data URLs fallback when Storage not available
-  publishedAt?: any;
-  createdBy?: string;
-  createdAt?: any;
-};
 
 const MASTER = process.env.NEXT_PUBLIC_MASTER_UID || "";
 
@@ -49,13 +30,12 @@ export default function AdminNoticiasPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const q = query(collection(db, "news"), orderBy("publishedAt", "desc"));
-    const unsub = onSnapshot(q, (snap) => {
-      const arr: NewsDoc[] = [];
-      snap.forEach((d) => arr.push({ id: d.id, ...(d.data() as any) }));
+    const unsub = subscribeToAdminNews((arr) => {
       setNews(arr);
     });
-    return () => unsub();
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
   }, []);
 
   if (loading) return <div className="p-8">Carregando...</div>;
@@ -128,9 +108,7 @@ export default function AdminNoticiasPage() {
 
   async function handleSave(e?: React.FormEvent) {
     if (e) e.preventDefault();
-    console.log('handleSave called', { saving, editingId, form });
     if (!form.title.trim()) {
-      console.warn('Título vazio, abortando save');
       return alert("Título é obrigatório");
     }
     setSaving(true);
@@ -141,76 +119,50 @@ export default function AdminNoticiasPage() {
         link: form.link || null,
         source: form.source || null,
         imageUrls: form.imageUrls || [],
-        createdBy: user?.uid || null,
       };
-      console.log('Payload prepared (before publishedAt/upload):', payload);
-      // publishedAt
+
+      // Handle publishedAt
       if (form.publishedAt) {
-        const d = new Date(form.publishedAt);
-        payload.publishedAt = isNaN(d.getTime()) ? serverTimestamp() : Timestamp.fromDate(d);
+        payload.publishedAt = new Date(form.publishedAt);
       } else {
-        payload.publishedAt = serverTimestamp();
+        payload.publishedAt = new Date();
       }
 
-      // if there are new files selected, upload them first
+      // Upload files if any
       const fileList: File[] = (form as any).newFiles || [];
       if (fileList.length > 0) {
-        console.log('Uploading files, count:', fileList.length);
         try {
           const uploaded = await uploadFiles(fileList.slice(0, 10));
-          console.log('Uploaded files, urls:', uploaded);
           payload.imageUrls = [...(payload.imageUrls || []), ...uploaded];
         } catch (uploadErr: any) {
-          console.warn('Falha no upload de arquivos para Storage, tentando fallback para data URLs:', uploadErr);
-          // fallback gratuito: converter arquivos para data URLs (base64) e salvar no documento
+          console.warn('Storage error, trying fallback:', uploadErr);
           try {
             const filesToEncode = fileList.slice(0, 10);
-            // generate thumbnails to reduce size before storing as data URLs
             const encoded = await Promise.all(
               filesToEncode.map((f) => resizeFileToDataURL(f, 800, 0.7))
             );
-            // anexar como imageData (campo alternativo)
             payload.imageData = [...(payload.imageData || []), ...encoded];
-            // avisar admin sobre limitação
-            alert('Storage indisponível: imagens foram incorporadas como thumbnails (JPEG) para economizar espaço. Considere ativar o Storage para melhor performance e armazenamento de imagens em alta resolução.');
+            alert('Storage indisponível: imagens foram incorporadas como thumbnails.');
           } catch (encErr: any) {
-            console.error('Falha ao converter imagens para data URLs (thumbnail):', encErr);
-            alert('Erro ao processar imagens localmente: ' + (encErr?.message || 'erro desconhecido'));
+            alert('Erro ao processar imagens: ' + encErr?.message);
             setSaving(false);
             return;
           }
         }
-      } else {
-        console.log('No new files to upload');
       }
 
-      console.log('Final payload to save:', { editingId, payload });
-
       if (editingId) {
-        console.log('Updating existing news, id:', editingId, 'payload:', payload);
-        try {
-          await updateDoc(doc(db, "news", editingId), payload);
-          console.log('News updated:', editingId);
-          alert('Notícia atualizada com sucesso');
-          resetForm();
-        } catch (updErr: any) {
-          console.error('Erro ao atualizar notícia:', updErr);
-          alert('Erro ao atualizar notícia: ' + (updErr?.message || updErr?.code || 'erro desconhecido'));
-          // leave form as-is so admin can retry
-          setSaving(false);
-          return;
-        }
+        await updateNews(editingId, payload);
+        alert('Notícia atualizada com sucesso');
+        resetForm();
       } else {
-        payload.createdAt = serverTimestamp();
-        const ref = await addDoc(collection(db, "news"), payload);
-        console.log('News created, id:', ref.id);
+        await createNews(payload, user?.uid || 'anon');
         alert('Notícia publicada com sucesso');
         resetForm();
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao salvar notícia:', err);
-      // show more detailed message when possible
-      alert("Erro ao salvar notícia. Veja o console para mais detalhes.");
+      alert("Erro ao salvar notícia: " + (err?.message || 'erro desconhecido'));
     } finally {
       setSaving(false);
     }
@@ -233,10 +185,11 @@ export default function AdminNoticiasPage() {
   async function handleDelete(id: string) {
     if (!confirm("Excluir esta notícia?")) return;
     try {
-      await deleteDoc(doc(db, "news", id));
-    } catch (e) {
+      await deleteNews(id);
+      alert("Notícia excluída com sucesso");
+    } catch (e: any) {
       console.error(e);
-      alert("Erro ao excluir");
+      alert("Erro ao excluir: " + (e?.message || 'erro desconhecido'));
     }
   }
 

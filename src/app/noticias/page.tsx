@@ -1,20 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
-import { db } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
+import { subscribeToNews, NewsDoc } from "@/lib/newsQueries";
 import NewsRow from "@/components/NewsRow";
 import NewsReader from "@/components/NewsReader";
-
-type NewsDoc = {
-  id: string;
-  title: string;
-  summary?: string;
-  link?: string;
-  source?: string;
-  imageUrls?: string[];
-  imageData?: string[]; // data URLs fallback when Storage is not available
-  publishedAt?: any;
-};
 
 export default function NoticiasPublicPage() {
   const [news, setNews] = useState<NewsDoc[]>([]);
@@ -22,18 +10,11 @@ export default function NoticiasPublicPage() {
   const [openId, setOpenId] = useState<string | null>(null);
 
   useEffect(() => {
-    // load published news ordered by publishedAt desc
+    // Subscribe to news (dual-mode: Firestore ou Supabase)
     try {
-      const q = query(collection(db, "news"), orderBy("publishedAt", "desc"));
-      const unsub = onSnapshot(
-        q,
-        (snap) => {
-          const arr: NewsDoc[] = [];
-          snap.forEach((d) => {
-            const data = d.data() as any;
-            if (data) arr.push({ id: d.id, ...data });
-          });
-          setNews(arr);
+      const unsub = subscribeToNews(
+        (news) => {
+          setNews(news);
           setLoading(false);
         },
         (err) => {
@@ -103,5 +84,4 @@ export default function NoticiasPublicPage() {
   );
 }
 
-NEXT_PUBLIC_SUPABASE_URL=https://<your-project>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
+

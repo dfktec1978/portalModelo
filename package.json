@@ -6,10 +6,23 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test-supabase": "node scripts/test-supabase-connection.js",
+    "setup-supabase": "node scripts/interactive-setup.js",
+    "migrate": "node scripts/migrate-firestore-to-supabase.js",
+    "migrate-news": "node scripts/migrate-firestore-to-supabase-rest.js",
+    "migrate-users": "node scripts/migrate-users-to-profiles.js",
+    "migrate-stores": "node scripts/migrate-stores.js",
+    "migrate-classifieds": "node scripts/migrate-classifieds.js",
+    "migrate-professionals": "node scripts/migrate-professionals.js",
+    "test": "node scripts/test-news.js && node scripts/test-admin.js",
+    "test:news": "node scripts/test-news.js",
+    "test:admin": "node scripts/test-admin.js",
+    "status": "node scripts/status.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.86.0",
+    "@supabase/supabase-js": "^2.86.2",
+    "dotenv": "^17.2.3",
     "firebase": "^12.6.0",
     "firebase-admin": "^13.6.0",
     "next": "15.5.4",
@@ -25,8 +38,10 @@
     "autoprefixer": "^10.4.21",
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
+    "pg": "^8.16.3",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.14",
-    "typescript": "^5"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   }
 }
