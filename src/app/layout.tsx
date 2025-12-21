@@ -14,9 +14,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-br">
-    {/* suppressHydrationWarning: some browser extensions (e.g. sidebar/assistants) inject attributes into the DOM
-      which cause hydration mismatches during development. Keep this flag while debugging such issues. */}
-    <body suppressHydrationWarning={true} className="bg-gray-100 text-gray-800 flex flex-col min-h-screen">
+    <body className="bg-gray-100 text-gray-800 flex flex-col min-h-screen" suppressHydrationWarning={true}>
         <AuthProvider>
           <Header />
 

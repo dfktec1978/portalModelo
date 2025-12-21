@@ -172,22 +172,43 @@ export async function searchClassifieds(query: string) {
   return { data, error };
 }
 
-// STATS - Obter estatísticas
-export async function getClassifiedStats(userId: string) {
+// ADMIN - Atualizar classificado (sem verificação de dono)
+export async function adminUpdateClassified(
+  id: string,
+  updates: Partial<Omit<Classified, "id" | "seller_id" | "created_at">>
+) {
   const { data, error } = await supabase
     .from("classifieds")
-    .select("*")
-    .eq("seller_id", userId);
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select()
+    .single();
 
-  if (error) return { stats: null, error };
+  return { data, error };
+}
 
-  return {
-    stats: {
-      total: data?.length || 0,
-      active: data?.filter((c) => c.status === "active").length || 0,
-      sold: data?.filter((c) => c.status === "sold").length || 0,
-      removed: data?.filter((c) => c.status === "removed").length || 0,
-    },
-    error: null,
-  };
+// ADMIN - Deletar classificado (hard delete)
+export async function adminDeleteClassified(id: string) {
+  const { error } = await supabase
+    .from("classifieds")
+    .delete()
+    .eq("id", id);
+
+  return { error };
+}
+
+// READ - Obter categorias distintas
+export async function getCategories() {
+  const { data, error } = await supabase
+    .from("classifieds")
+    .select("category")
+    .not("category", "is", null);
+
+  if (error) return { data: [], error };
+
+  const categories = [...new Set(data.map(item => item.category).filter(Boolean))].sort();
+  return { data: categories, error: null };
 }

@@ -1,48 +1,118 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import PageBackground from "@/components/PageBackground";
-import { useAuth } from "@/lib/useAuth";
+import { useAuth } from "@/lib/AuthContext";
+import { useProfile } from "@/lib/useProfile";
+import Image from "next/image";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, signOut } = useAuth();
+  const { profile, loading: profileLoading } = useProfile();
   const router = useRouter();
+
+  // Proteção: redirecionar se não estiver logado ou não for admin
+  if (!loading && !profileLoading) {
+    if (!user) {
+      router.push("/login");
+      return null;
+    }
+    if (profile?.role !== "admin") {
+      router.push("/");
+      return null;
+    }
+  }
 
   function handleLogout() {
     signOut().then(() => router.push('/'));
   }
 
   return (
-    <div className="relative min-h-screen bg-transparent">
-      <PageBackground />
+    <div className="min-h-screen bg-gradient-to-b from-[#003049] to-[#162f7a] text-white">
+      {/* Header */}
+      <header className="border-b border-white/10">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2">
+            <Image
+              src="/img/logos/logo.png"
+              alt="Portal Modelo"
+              width={40}
+              height={40}
+            />
+            <span className="font-bold text-lg">Portal Modelo - Admin</span>
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="bg-[#D62828] hover:bg-[#C41E1E] px-4 py-2 rounded text-sm font-semibold"
+          >
+            Sair
+          </button>
+        </div>
+      </header>
 
-      <div className="relative z-10 min-h-screen flex">
-        {/* Sidebar */}
-        <aside className="w-64 bg-white/95 border-r border-gray-200 p-4">
-          <div className="mb-6">
-            <h2 className="text-xl font-bold">Admin Portal</h2>
-            <p className="text-sm text-gray-600">Painel de gerenciamento</p>
-          </div>
+      {/* Main Content */}
+      <main className="max-w-6xl mx-auto px-4 py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Sidebar */}
+          <aside className="lg:col-span-1">
+            <div className="bg-white/10 border border-white/20 rounded-lg p-6">
+              <h3 className="font-bold text-lg mb-4">Painel Admin</h3>
+              <div className="space-y-3 text-sm">
+                <div>
+                  <p className="text-gray-400">Nome</p>
+                  <p className="font-semibold">{profile?.display_name || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Email</p>
+                  <p className="font-semibold text-xs break-all">{profile?.email || user?.email}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Tipo</p>
+                  <p className="font-semibold">Administrador</p>
+                </div>
+              </div>
 
-          <nav className="flex flex-col gap-2">
-            <Link href="/admin" className="px-3 py-2 rounded hover:bg-gray-100">Visão geral</Link>
-            <Link href="/admin/lojas" className="px-3 py-2 rounded hover:bg-gray-100">Lojas</Link>
-            <Link href="/admin/noticias" className="px-3 py-2 rounded hover:bg-gray-100">Notícias</Link>
-            <Link href="/admin/classificados" className="px-3 py-2 rounded hover:bg-gray-100">Classificados</Link>
-            <Link href="/admin/usuarios" className="px-3 py-2 rounded hover:bg-gray-100">Usuários</Link>
-            <Link href="/admin/logs" className="px-3 py-2 rounded hover:bg-gray-100">Logs</Link>
-          </nav>
-
-          <div className="mt-6 pt-4 border-t">
-            <div className="text-sm text-gray-700">{loading ? 'Carregando...' : user ? `Logado: ${user.email}` : 'Não autenticado'}</div>
-            <div className="mt-2 flex gap-2">
-              <button onClick={handleLogout} className="text-sm px-3 py-1 bg-red-500 text-white rounded">Sair</button>
+              <Link
+                href="/dashboard"
+                className="mt-6 w-full block text-center bg-[#FDC500] text-black font-semibold py-2 rounded hover:bg-[#E8B500]"
+              >
+                Voltar ao Dashboard
+              </Link>
             </div>
-          </div>
-        </aside>
 
-        <main className="flex-1 p-6 overflow-auto">{children}</main>
-      </div>
+            <nav className="mt-6 space-y-2">
+              <Link href="/admin" className="block bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-4 transition">
+                <h3 className="font-bold text-lg mb-2">📊 Visão Geral</h3>
+                <p className="text-gray-400 text-sm">Painel principal</p>
+              </Link>
+              <Link href="/admin/lojas" className="block bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-4 transition">
+                <h3 className="font-bold text-lg mb-2">🏪 Lojas</h3>
+                <p className="text-gray-400 text-sm">Gerenciar lojas</p>
+              </Link>
+              <Link href="/admin/noticias" className="block bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-4 transition">
+                <h3 className="font-bold text-lg mb-2">📰 Notícias</h3>
+                <p className="text-gray-400 text-sm">Gerenciar notícias</p>
+              </Link>
+              <Link href="/admin/profissionais" className="block bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-4 transition">
+                <h3 className="font-bold text-lg mb-2">👥 Profissionais</h3>
+                <p className="text-gray-400 text-sm">Gerenciar profissionais</p>
+              </Link>
+              <Link href="/admin/classificados" className="block bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-4 transition">
+                <h3 className="font-bold text-lg mb-2">📋 Classificados</h3>
+                <p className="text-gray-400 text-sm">Gerenciar anúncios</p>
+              </Link>
+              <Link href="/admin/usuarios" className="block bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-4 transition">
+                <h3 className="font-bold text-lg mb-2">👤 Usuários</h3>
+                <p className="text-gray-400 text-sm">Gerenciar usuários</p>
+              </Link>
+            </nav>
+          </aside>
+
+          {/* Main Content */}
+          <section className="lg:col-span-3">
+            {children}
+          </section>
+        </div>
+      </main>
     </div>
   );
 }

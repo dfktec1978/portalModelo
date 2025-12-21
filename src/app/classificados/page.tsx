@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { listClassifieds, Classified } from "@/lib/classifiedQueries";
@@ -12,26 +12,32 @@ export default function ClassifiedsPage() {
   const [selectedCategory, setSelectedCategory] = useState("todos");
   const [searchQuery, setSearchQuery] = useState("");
 
+  const loadClassifieds = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await listClassifieds({
+        category: selectedCategory === "todos" ? undefined : selectedCategory,
+      });
+
+      if (error) {
+        setError(error.message);
+      } else {
+        const filtered = data?.filter((c) =>
+          c.title.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        setClassifieds(filtered || []);
+      }
+    } catch (err) {
+      console.error("Erro ao carregar classificados:", err);
+      setError("Erro ao carregar classificados. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedCategory, searchQuery]);
+
   useEffect(() => {
     loadClassifieds();
-  }, [selectedCategory]);
-
-  async function loadClassifieds() {
-    setLoading(true);
-    const { data, error } = await listClassifieds({
-      category: selectedCategory === "todos" ? undefined : selectedCategory,
-    });
-
-    if (error) {
-      setError(error.message);
-    } else {
-      const filtered = data?.filter((c) =>
-        c.title.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setClassifieds(filtered || []);
-    }
-    setLoading(false);
-  }
+  }, [selectedCategory, loadClassifieds]);
 
   const categories = [
     { value: "todos", label: "Todos" },
@@ -56,7 +62,7 @@ export default function ClassifiedsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             {/* Search */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="form-label">
                 Buscar
               </label>
               <input
@@ -64,20 +70,19 @@ export default function ClassifiedsPage() {
                 placeholder="Digite o produto ou serviço..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyUp={loadClassifieds}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="form-input"
               />
             </div>
 
             {/* Category */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="form-label">
                 Categoria
               </label>
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="form-select"
               >
                 {categories.map((cat) => (
                   <option key={cat.value} value={cat.value}>
@@ -89,12 +94,20 @@ export default function ClassifiedsPage() {
           </div>
 
           {/* Create Button */}
-          <Link
-            href="/dashboard/classificados/novo"
-            className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold transition"
-          >
-            + Novo Classificado
-          </Link>
+          <div className="flex gap-4">
+            <button
+              onClick={loadClassifieds}
+              className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-semibold transition"
+            >
+              🔍 Buscar
+            </button>
+            <Link
+              href="/classificados/novo"
+              className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold transition"
+            >
+              + Novo Classificado
+            </Link>
+          </div>
         </div>
 
         {/* Content */}

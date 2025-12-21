@@ -204,7 +204,22 @@ create trigger on_auth_user_created
   for each row execute procedure public.sync_profile();
 
 -- ============================================
--- 8. COMENTÁRIOS E OBSERVAÇÕES
+-- 8. FUNÇÃO para executar SQL arbitrário (apenas para admin)
+-- ============================================
+create or replace function public.exec_sql(sql text)
+returns void as $$
+begin
+  -- Apenas admin pode executar
+  if not exists (select 1 from profiles where id = auth.uid() and role = 'admin') then
+    raise exception 'Acesso negado: apenas administradores podem executar SQL';
+  end if;
+  
+  execute sql;
+end;
+$$ language plpgsql security definer;
+
+-- ============================================
+-- 9. COMENTÁRIOS E OBSERVAÇÕES
 -- ============================================
 -- RLS (Row Level Security) está habilitado em todas as tabelas
 -- Políticas padrão permitem leitura pública de dados públicos

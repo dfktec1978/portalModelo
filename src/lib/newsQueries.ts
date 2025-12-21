@@ -35,6 +35,7 @@ export type NewsDoc = {
   published_at?: any;
   publishedAt?: any; // normalizado
   created_by?: string;
+  heroImageIndex?: number;
 };
 
 /**
@@ -60,6 +61,17 @@ function normalizeNews(doc: any): NewsDoc {
   }
   if (!Array.isArray(imageUrls)) imageUrls = [];
 
+  // Parse image_data se vier como string JSON (Supabase)
+  let imageData = doc.imageData || doc.image_data;
+  if (typeof imageData === "string") {
+    try {
+      imageData = JSON.parse(imageData);
+    } catch (e) {
+      imageData = [];
+    }
+  }
+  if (!Array.isArray(imageData)) imageData = [];
+
   return {
     id: doc.id,
     title: doc.title,
@@ -69,10 +81,11 @@ function normalizeNews(doc: any): NewsDoc {
     source: doc.source,
     imageUrls,
     image_urls: imageUrls,
-    imageData: doc.imageData,
+    imageData,
     publishedAt: doc.published_at || doc.publishedAt,
     published_at: doc.published_at || doc.publishedAt,
     created_by: doc.created_by,
+    heroImageIndex: doc.hero_image_index || doc.heroImageIndex || 0,
   };
 }
 

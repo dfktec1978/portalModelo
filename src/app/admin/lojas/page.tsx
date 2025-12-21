@@ -1,16 +1,16 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/lib/useAuth";
+import { useAuth } from "@/lib/AuthContext";
+import { useProfile } from "@/lib/useProfile";
 import {
   subscribeToAdminStores,
   updateStoreStatus,
   type StoreDoc,
 } from "@/lib/adminQueries";
 
-const MASTER = process.env.NEXT_PUBLIC_MASTER_UID || "";
-
 export default function AdminLojasPage() {
   const { user, loading } = useAuth();
+  const { profile, loading: profileLoading } = useProfile();
   const [stores, setStores] = useState<StoreDoc[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -23,14 +23,14 @@ export default function AdminLojasPage() {
     };
   }, []);
 
-  if (loading) return <div className="p-8">Carregando...</div>;
-  if (!user || user.uid !== MASTER) return <div className="p-8">Acesso negado.</div>;
+  if (loading || profileLoading) return <div className="p-8">Carregando...</div>;
+  if (!user || profile?.role !== "admin") return <div className="p-8">Acesso negado. Apenas administradores podem acessar esta área.</div>;
 
   async function changeStatus(id: string, status: string) {
     if (!confirm(`Confirmar ${status} para a loja ${id}?`)) return;
     setBusy(id);
     try {
-      await updateStoreStatus(id, status, user!.uid);
+      await updateStoreStatus(id, status, user!.id);
       alert(`Loja ${status} com sucesso`);
     } catch (e: any) {
       console.error(e);

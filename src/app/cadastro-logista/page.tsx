@@ -2,7 +2,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/useAuth";
+import { useAuth } from "@/lib/AuthContext";
 import { db } from "@/lib/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import supabase from "@/lib/supabase";
@@ -40,10 +40,34 @@ export default function CadastroLogistaPage() {
       return;
     }
 
+    // Verificar se o e-mail já está cadastrado
+    try {
+      const { data: existingUser, error: checkError } = await supabase
+        .from("profiles")
+        .select("id, role")
+        .eq("email", email)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+        console.error("Erro ao verificar e-mail:", checkError);
+        setError("Erro ao verificar disponibilidade do e-mail");
+        return;
+      }
+
+      if (existingUser) {
+        setError(`Este e-mail já está cadastrado como ${existingUser.role === 'cliente' ? 'Cliente' : 'Lojista'}. Use outro e-mail ou faça login.`);
+        return;
+      }
+    } catch (err) {
+      console.error("Erro na verificação de e-mail:", err);
+      setError("Erro ao verificar disponibilidade do e-mail");
+      return;
+    }
+
     setLoading(true);
     try {
-      // cria usuário com role 'logista'
-      const cred = await signUp(email, password, "logista");
+      // cria usuário com role 'lojista'
+      const cred = await signUp(email, password, "lojista");
       
       // Salvar dados da loja e perfil no backend apropriado
       try {
@@ -60,7 +84,7 @@ export default function CadastroLogistaPage() {
                 id: uid,
                 email,
                 display_name: ownerName,
-                role: "logista",
+                role: "lojista",
               });
             if (profileError) {
               console.warn("Erro ao salvar profile no Supabase:", profileError);
@@ -87,7 +111,7 @@ export default function CadastroLogistaPage() {
             
             await setDoc(doc(db, "users", uid), {
               email,
-              role: "logista",
+              role: "lojista",
               name: ownerName,
               createdAt: new Date().toISOString(),
             });

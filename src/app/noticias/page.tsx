@@ -1,13 +1,16 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { subscribeToNews, NewsDoc } from "@/lib/newsQueries";
+import { deleteNews } from "@/lib/adminQueries";
+import { useAuth } from "@/lib/AuthContext";
 import NewsRow from "@/components/NewsRow";
-import NewsReader from "@/components/NewsReader";
 
 export default function NoticiasPublicPage() {
+  const { user } = useAuth();
+  const router = useRouter();
   const [news, setNews] = useState<NewsDoc[]>([]);
   const [loading, setLoading] = useState(true);
-  const [openId, setOpenId] = useState<string | null>(null);
 
   useEffect(() => {
     // Subscribe to news (dual-mode: Firestore ou Supabase)
@@ -29,24 +32,21 @@ export default function NoticiasPublicPage() {
     }
   }, []);
 
-  function openModal(id: string) {
-    setOpenId(id);
-    // update URL so it can be shared without navigating away (initial version)
-    try {
-      window.history.pushState({}, "", `/noticias/${id}`);
-    } catch (e) {
-      // ignore
-    }
+  function openNews(id: string) {
+    router.push(`/noticias/${id}`);
   }
 
-  function closeModal() {
-    setOpenId(null);
+  function editNews(id: string) {
+    router.push(`/admin/noticias?edit=${id}`);
+  }
+
+  async function deleteNewsItem(id: string) {
     try {
-      // go back to restore URL if possible
-      window.history.back();
-    } catch (e) {
-      // fallback: push base URL
-      window.history.pushState({}, "", `/noticias`);
+      await deleteNews(id);
+      // A lista será atualizada automaticamente via subscription
+    } catch (error) {
+      console.error("Erro ao excluir notícia:", error);
+      alert("Erro ao excluir notícia");
     }
   }
 
@@ -64,21 +64,16 @@ export default function NoticiasPublicPage() {
           <div className="flex flex-col divide-y">
             {news.map((n) => (
               <div key={n.id} className="py-2">
-                <NewsRow news={n} onOpenAction={openModal} />
+                <NewsRow
+                  news={n}
+                  onOpenAction={openNews}
+                  onEditAction={editNews}
+                  onDeleteAction={deleteNewsItem}
+                />
               </div>
             ))}
           </div>
         )}
-
-        {/* Modal reader overlay */}
-        {openId ? (
-          <div className="fixed inset-0 z-40 flex items-start justify-center pt-20 px-4">
-            <div className="absolute inset-0 bg-black/40" onClick={closeModal} />
-            <div className="relative z-50 w-full max-w-3xl">
-              <NewsReader id={openId} onCloseAction={closeModal} />
-            </div>
-          </div>
-        ) : null}
       </div>
     </div>
   );

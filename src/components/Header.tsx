@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
+import { useProfile } from "@/lib/useProfile";
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const router = useRouter();
   const { user, signOut, loading } = useAuth();
+  const { profile, loading: profileLoading } = useProfile();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -56,10 +58,10 @@ export default function Header() {
           <Link href="/noticias" className="hover:text-yellow-400 transition">
             Notícias
           </Link>
-          <Link href="/" className="hover:text-yellow-400 transition">
+          <Link href="/lojas" className="hover:text-yellow-400 transition">
             Lojas
           </Link>
-          <Link href="/" className="hover:text-yellow-400 transition">
+          <Link href="/profissionais" className="hover:text-yellow-400 transition">
             Profissionais
           </Link>
         </nav>
@@ -93,12 +95,54 @@ export default function Header() {
                       📊 Dashboard
                     </Link>
                     <Link
+                      href="/classificados"
+                      onClick={() => setMenuOpen(false)}
+                      className="block px-4 py-2 hover:bg-gray-100 transition text-sm"
+                    >
+                      📢 Classificados
+                    </Link>
+                    <Link
+                      href="/profissionais"
+                      onClick={() => setMenuOpen(false)}
+                      className="block px-4 py-2 hover:bg-gray-100 transition text-sm"
+                    >
+                      👷 Profissionais
+                    </Link>
+                    <Link
+                      href="/lojas"
+                      onClick={() => setMenuOpen(false)}
+                      className="block px-4 py-2 hover:bg-gray-100 transition text-sm"
+                    >
+                      🏪 Lojas
+                    </Link>
+                    <Link
                       href="/noticias"
                       onClick={() => setMenuOpen(false)}
                       className="block px-4 py-2 hover:bg-gray-100 transition text-sm"
                     >
                       📰 Notícias
                     </Link>
+
+                    {/* Opções condicionais baseadas no role */}
+                    {profile?.role === "profissional" && (
+                      <Link
+                        href="/dashboard/meu-perfil-profissional"
+                        onClick={() => setMenuOpen(false)}
+                        className="block px-4 py-2 hover:bg-gray-100 transition text-sm"
+                      >
+                        👤 Meu Perfil Profissional
+                      </Link>
+                    )}
+
+                    {profile?.role === "admin" && (
+                      <Link
+                        href="/admin"
+                        onClick={() => setMenuOpen(false)}
+                        className="block px-4 py-2 hover:bg-gray-100 transition text-sm"
+                      >
+                        ⚙️ Administração
+                      </Link>
+                    )}
                   </div>
 
                   <div className="border-t border-gray-200 p-2">
@@ -121,7 +165,7 @@ export default function Header() {
                 Login
               </Link>
               <Link
-                href="/cadastro-cliente"
+                href="/cadastro"
                 className="bg-[#D62828] hover:bg-[#C41E1E] px-3 py-2 rounded transition font-semibold text-sm"
               >
                 Cadastro
@@ -145,13 +189,13 @@ export default function Header() {
           <Link href="/noticias" className="block text-white hover:text-yellow-400">
             Notícias
           </Link>
-          <Link href="/" className="block text-white hover:text-yellow-400">
+          <Link href="/lojas" className="block text-white hover:text-yellow-400">
             Lojas
           </Link>
-          <Link href="/" className="block text-white hover:text-yellow-400">
+          <Link href="/profissionais" className="block text-white hover:text-yellow-400">
             Profissionais
           </Link>
-          <Link href="/" className="block text-white hover:text-yellow-400">
+          <Link href="/classificados" className="block text-white hover:text-yellow-400">
             Classificados
           </Link>
 
@@ -180,7 +224,7 @@ export default function Header() {
                   Login
                 </Link>
                 <Link
-                  href="/cadastro-cliente"
+                  href="/cadastro"
                   className="block text-center bg-[#D62828] text-white py-2 rounded font-semibold"
                 >
                   Cadastro

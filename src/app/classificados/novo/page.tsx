@@ -123,7 +123,7 @@ export default function NovoClassificadoPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Title */}
             <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="title" className="form-label">
                 Título *
               </label>
               <input
@@ -134,14 +134,14 @@ export default function NovoClassificadoPage() {
                 onChange={handleChange}
                 placeholder="Ex: iPhone 13 branco"
                 maxLength={100}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="form-input"
               />
               <p className="text-xs text-gray-500 mt-1">{formData.title.length}/100 caracteres</p>
             </div>
 
             {/* Description */}
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="description" className="form-label">
                 Descrição *
               </label>
               <textarea
@@ -152,7 +152,7 @@ export default function NovoClassificadoPage() {
                 placeholder="Descreva o produto ou serviço em detalhes..."
                 rows={5}
                 maxLength={1000}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="form-textarea"
               />
               <p className="text-xs text-gray-500 mt-1">
                 {formData.description.length}/1000 caracteres
@@ -161,7 +161,7 @@ export default function NovoClassificadoPage() {
 
             {/* Category */}
             <div>
-              <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="category" className="form-label">
                 Categoria *
               </label>
               <select
@@ -169,7 +169,7 @@ export default function NovoClassificadoPage() {
                 name="category"
                 value={formData.category}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="form-select"
               >
                 {categories.map((cat) => (
                   <option key={cat.value} value={cat.value}>
@@ -181,7 +181,7 @@ export default function NovoClassificadoPage() {
 
             {/* Location */}
             <div>
-              <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="location" className="form-label">
                 Localização
               </label>
               <input
@@ -191,30 +191,26 @@ export default function NovoClassificadoPage() {
                 value={formData.location}
                 onChange={handleChange}
                 placeholder="Ex: São Paulo - SP"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="form-input"
               />
             </div>
 
             {/* Price */}
             <div>
-              <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2">
-                Preço
+              <label htmlFor="price" className="form-label">
+                Preço (R$)
               </label>
-              <div className="flex items-center">
-                <span className="text-gray-600 mr-2">R$</span>
-                <input
-                  id="price"
-                  type="number"
-                  name="price"
-                  value={formData.price}
-                  onChange={handleChange}
-                  placeholder="0.00"
-                  step="0.01"
-                  min="0"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <p className="text-xs text-gray-500 mt-1">Deixe em branco se não aplicável</p>
+              <input
+                id="price"
+                type="number"
+                name="price"
+                value={formData.price}
+                onChange={handleChange}
+                placeholder="0,00"
+                min="0"
+                step="0.01"
+                className="form-input"
+              />
             </div>
 
             {/* Image Upload */}

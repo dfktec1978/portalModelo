@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import PageBackground from "@/components/PageBackground";
 
 
@@ -33,7 +34,7 @@ export default function Home() {
 
 
 				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4 w-full max-w-4xl">
-					<a
+					<Link
 						href="/lojas"
 						className="bg-blue-900 text-white px-6 py-3 rounded-lg font-semibold hover:bg-yellow-500 hover:text-blue-900 transition shadow flex items-center justify-center gap-2"
 					>
@@ -43,9 +44,9 @@ export default function Home() {
 							<path d="M3 9.5L5 4h14l2 5.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
 						</svg>
 						Ver Lojas
-					</a>
+					</Link>
 
-					<a
+					<Link
 						href="/classificados"
 						className="bg-blue-900 text-white px-6 py-3 rounded-lg font-semibold hover:bg-yellow-500 hover:text-blue-900 transition shadow flex items-center justify-center gap-2"
 					>
@@ -55,9 +56,9 @@ export default function Home() {
 							<path d="M19 8c1 1.5 1 4 0 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
 						</svg>
 						Classificados
-					</a>
+					</Link>
 
-					<a
+					<Link
 						href="/profissionais"
 						className="bg-blue-900 text-white px-6 py-3 rounded-lg font-semibold hover:bg-yellow-500 hover:text-blue-900 transition shadow flex items-center justify-center gap-2"
 					>
@@ -67,9 +68,9 @@ export default function Home() {
 							<path d="M8 7V6a4 4 0 0 1 8 0v1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
 						</svg>
 						Profissionais
-					</a>
+					</Link>
 
-					<a
+					<Link
 						href="/noticias"
 						className="bg-blue-900 text-white px-6 py-3 rounded-lg font-semibold hover:bg-yellow-500 hover:text-blue-900 transition shadow flex items-center justify-center gap-2"
 					>
@@ -79,7 +80,7 @@ export default function Home() {
 							<path d="M8 11h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
 						</svg>
 						Notícias
-					</a>
+					</Link>
 				</div>
 			</main>
 		</div>

@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/useAuth";
 export default function AuthModal({ open, onCloseAction }: { open: boolean; onCloseAction: () => void }) {
   const router = useRouter();
   const { signUp, signIn } = useAuth();
-  const [tab, setTab] = useState<"cliente" | "logista">("cliente");
+  const [tab, setTab] = useState<"cliente" | "lojista">("cliente");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,8 +29,8 @@ export default function AuthModal({ open, onCloseAction }: { open: boolean; onCl
       if (tab === "cliente") {
         await signIn(email, password);
       } else {
-        // logista forma: tenta signup primeiro
-        await signUp(email, password, "logista");
+        // lojista forma: tenta signup primeiro
+        await signUp(email, password, "lojista");
       }
       onCloseAction();
     } catch (err: any) {
@@ -45,7 +45,7 @@ export default function AuthModal({ open, onCloseAction }: { open: boolean; onCl
 
       <div className="relative bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-6" onClick={(e) => e.stopPropagation()}>
         <header className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Entrar — {tab === "cliente" ? "Cliente" : "Logista"}</h3>
+          <h3 className="text-lg font-semibold">Entrar — {tab === "cliente" ? "Cliente" : "Lojista"}</h3>
           <button onClick={onCloseAction} aria-label="Fechar" className="text-gray-600 hover:text-gray-800">✕</button>
         </header>
 
@@ -57,10 +57,10 @@ export default function AuthModal({ open, onCloseAction }: { open: boolean; onCl
             Cliente
           </button>
           <button
-            onClick={() => setTab("logista")}
-            className={`flex-1 py-2 rounded-md font-medium ${tab === "logista" ? "bg-[#293B63] text-white" : "bg-gray-100 text-gray-700"}`}
+            onClick={() => setTab("lojista")}
+            className={`flex-1 py-2 rounded-md font-medium ${tab === "lojista" ? "bg-[#293B63] text-white" : "bg-gray-100 text-gray-700"}`}
           >
-            Logista
+            Lojista
           </button>
         </div>
 
@@ -83,7 +83,7 @@ export default function AuthModal({ open, onCloseAction }: { open: boolean; onCl
             className="w-full border border-gray-200 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400"
           />
 
-          <button type="submit" disabled={loading} className={`mt-2 w-full py-2 rounded-md font-semibold ${tab === "logista" ? "bg-[#293B63] text-white" : "bg-[#AF2828] text-white"}`}>
+          <button type="submit" disabled={loading} className={`mt-2 w-full py-2 rounded-md font-semibold ${tab === "lojista" ? "bg-[#293B63] text-white" : "bg-[#AF2828] text-white"}`}>
             {loading ? "Carregando..." : tab === "cliente" ? "Entrar" : "Cadastrar Logista"}
           </button>
 

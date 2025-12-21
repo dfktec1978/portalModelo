@@ -198,7 +198,7 @@ export default function ImageUpload({
       {/* Info Text */}
       {images.length > 0 && canAddMore && (
         <p className="text-xs text-gray-500">
-          Clique no "X" para remover uma imagem, ou adicione mais acima.
+          Clique no &quot;X&quot; para remover uma imagem, ou adicione mais acima.
         </p>
       )}
     </div>

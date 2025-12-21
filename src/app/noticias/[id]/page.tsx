@@ -1,7 +1,7 @@
 import NewsReader from "@/components/NewsReader";
 
-export default function NewsIdPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default async function NewsIdPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   // render full page reader for direct links
   return (
     <div className="min-h-screen py-12">

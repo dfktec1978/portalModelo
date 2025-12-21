@@ -125,7 +125,7 @@ export default function DashboardPage() {
                   <p className="font-semibold capitalize">
                     {profile?.role === "cliente"
                       ? "Cliente"
-                      : profile?.role === "logista"
+                      : profile?.role === "lojista"
                       ? "Lojista"
                       : profile?.role === "profissional"
                       ? "Profissional"
@@ -179,7 +179,7 @@ export default function DashboardPage() {
                   </>
                 )}
 
-                {profile?.role === "logista" && (
+                {profile?.role === "lojista" && (
                   <>
                     <Link
                       href="/dashboard/minha-loja"
@@ -215,6 +215,42 @@ export default function DashboardPage() {
                     >
                       <h3 className="font-bold text-lg mb-2">👥 Meus Clientes</h3>
                       <p className="text-gray-400 text-sm">Ver histórico</p>
+                    </Link>
+                  </>
+                )}
+
+                {profile?.role === "admin" && (
+                  <>
+                    <Link
+                      href="/admin"
+                      className="bg-[#FDC500] text-black rounded-lg p-6 hover:bg-[#E8B500] transition font-semibold"
+                    >
+                      <h3 className="text-lg mb-2">⚙️ Painel Administrativo</h3>
+                      <p className="text-black/70 text-sm">Gerenciar o sistema</p>
+                    </Link>
+
+                    <Link
+                      href="/admin/lojas"
+                      className="bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-6 transition"
+                    >
+                      <h3 className="font-bold text-lg mb-2">🏪 Gerenciar Lojas</h3>
+                      <p className="text-gray-400 text-sm">Administração de lojas</p>
+                    </Link>
+
+                    <Link
+                      href="/admin/noticias"
+                      className="bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-6 transition"
+                    >
+                      <h3 className="font-bold text-lg mb-2">📰 Gerenciar Notícias</h3>
+                      <p className="text-gray-400 text-sm">Publicar conteúdo</p>
+                    </Link>
+
+                    <Link
+                      href="/admin/usuarios"
+                      className="bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-6 transition"
+                    >
+                      <h3 className="font-bold text-lg mb-2">👤 Gerenciar Usuários</h3>
+                      <p className="text-gray-400 text-sm">Administração de contas</p>
                     </Link>
                   </>
                 )}
@@ -255,21 +291,6 @@ export default function DashboardPage() {
           </section>
         </div>
       </main>
-    </div>
-  );
-}
-          <div className="bg-white/90 rounded-md shadow p-6 mb-6">
-            <h1 className="text-2xl font-bold">Painel do lojista</h1>
-            <p className="text-gray-600 mt-2">Visão geral rápida — métricas, vendas e atalhos.</p>
-          </div>
-
-          <div className="grid grid-cols-3 gap-6">
-            <div className="bg-white/90 rounded-md shadow p-4">Métricas 1</div>
-            <div className="bg-white/90 rounded-md shadow p-4">Métricas 2</div>
-            <div className="bg-white/90 rounded-md shadow p-4">Métricas 3</div>
-          </div>
-        </main>
-      </div>
     </div>
   );
 }

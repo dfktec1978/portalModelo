@@ -4,7 +4,6 @@
  * Fornece funções para operações administrativas que funcionam em ambos os backends
  */
 
-import { useAuth } from './useAuth';
 import { db } from './firebase';
 import {
   collection,
@@ -93,7 +92,25 @@ export function subscribeToAdminNews(callback: (news: NewsDoc[]) => void) {
             content: row.content,
             link: row.link,
             source: row.source,
-            imageUrls: row.image_urls ? JSON.parse(row.image_urls) : [],
+            imageUrls: (() => {
+              if (!row.image_urls) return [];
+              try {
+                const parsed = JSON.parse(row.image_urls);
+                return Array.isArray(parsed) ? parsed : [row.image_urls];
+              } catch {
+                // Se não for JSON válido, assume que é uma string URL
+                return [row.image_urls];
+              }
+            })(),
+            imageData: (() => {
+              if (!row.image_data) return [];
+              try {
+                const parsed = JSON.parse(row.image_data);
+                return Array.isArray(parsed) ? parsed : [];
+              } catch {
+                return [];
+              }
+            })(),
             publishedAt: row.published_at,
             createdBy: row.created_by,
             createdAt: row.created_at,
@@ -119,7 +136,25 @@ export function subscribeToAdminNews(callback: (news: NewsDoc[]) => void) {
             content: row.content,
             link: row.link,
             source: row.source,
-            imageUrls: row.image_urls ? JSON.parse(row.image_urls) : [],
+            imageUrls: (() => {
+              if (!row.image_urls) return [];
+              try {
+                const parsed = JSON.parse(row.image_urls);
+                return Array.isArray(parsed) ? parsed : [row.image_urls];
+              } catch {
+                // Se não for JSON válido, assume que é uma string URL
+                return [row.image_urls];
+              }
+            })(),
+            imageData: (() => {
+              if (!row.image_data) return [];
+              try {
+                const parsed = JSON.parse(row.image_data);
+                return Array.isArray(parsed) ? parsed : [];
+              } catch {
+                return [];
+              }
+            })(),
             publishedAt: row.published_at,
             createdBy: row.created_by,
             createdAt: row.created_at,
@@ -156,6 +191,8 @@ export async function createNews(data: Partial<NewsDoc>, userId: string) {
           link: data.link,
           source: data.source,
           image_urls: JSON.stringify(data.imageUrls || []),
+          image_data: JSON.stringify(data.imageData || []),
+          hero_image_index: (data as any).heroImageIndex || 0,
           published_at: data.publishedAt || new Date().toISOString(),
           created_by: userId,
         },
@@ -171,28 +208,41 @@ export async function createNews(data: Partial<NewsDoc>, userId: string) {
  * Update news
  */
 export async function updateNews(id: string, data: Partial<NewsDoc>) {
+  console.log('updateNews called with:', { id, data });
+  console.log('HAS_SUPABASE:', HAS_SUPABASE);
   if (!HAS_SUPABASE) {
     // Firebase mode
+    console.log('Using Firebase mode for update');
     return updateDoc(doc(db, 'news', id), {
       ...data,
       imageUrls: data.imageUrls,
     });
   } else {
     // Supabase mode
+    console.log('Using Supabase mode for update');
+    const updateData = {
+      title: data.title,
+      summary: data.summary,
+      content: data.content,
+      link: data.link,
+      source: data.source,
+      image_urls: JSON.stringify(data.imageUrls || []),
+      image_data: JSON.stringify(data.imageData || []),
+      hero_image_index: (data as any).heroImageIndex || 0,
+      published_at: data.publishedAt,
+    };
+    console.log('Update data for Supabase:', updateData);
+    
     const { error } = await supabase!
       .from('news')
-      .update({
-        title: data.title,
-        summary: data.summary,
-        content: data.content,
-        link: data.link,
-        source: data.source,
-        image_urls: JSON.stringify(data.imageUrls || []),
-        published_at: data.publishedAt,
-      })
+      .update(updateData)
       .eq('id', id);
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase update error:', error);
+      throw error;
+    }
+    console.log('Supabase update successful');
   }
 }
 
