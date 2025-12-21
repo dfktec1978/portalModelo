@@ -1,33 +1,24 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
-import { AuthProvider } from "@/lib/AuthContext";
-
+import Providers from "./providers";
 
 export const metadata: Metadata = {
   title: "Portal Modelo",
   description: "Portal de lojas, serviços e oportunidades de Modelo-SC",
 };
 
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="pt-br">
-    <body className="bg-gray-100 text-gray-800 flex flex-col min-h-screen" suppressHydrationWarning={true}>
-        <AuthProvider>
-          <Header />
-
-        {/* FAIXA AMARELA ABAIXO DO HEADER */}
-        <div className="w-full h-3" style={{ backgroundColor: "#FFD400" }} />
-
-  <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-6">{children}</main>
-
-        {/* FAIXA AMARELA ACIMA DO FOOTER */}
-        <div className="w-full h-3" style={{ backgroundColor: "#FFD400" }} />
-
-          <Footer />
-        </AuthProvider>
+      <body
+        className="bg-gray-100 text-gray-800 flex flex-col min-h-screen"
+        suppressHydrationWarning
+      >
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
