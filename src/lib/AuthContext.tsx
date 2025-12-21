@@ -1,7 +1,7 @@
 "use client";
 import { createContext, useContext, ReactNode } from "react";
 import { useSupabaseAuth } from "./useSupabaseAuth";
-import { supabase } from "./supabase";
+import { supabase } from "./supabaseClient";
 
 type User = {
   id: string;
