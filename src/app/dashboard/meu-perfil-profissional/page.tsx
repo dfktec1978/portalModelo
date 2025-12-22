@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useProfile } from '@/lib/useProfile';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { supabase } from "@/lib/supabaseClient";
 import { useImageUpload } from '@/lib/useImageUpload';
 import Image from 'next/image';
 

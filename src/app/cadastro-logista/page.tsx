@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { db } from "@/lib/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import supabase from "@/lib/supabase";
+import supabase from "@/lib/supabaseClient";
 
 const HAS_SUPABASE =
   typeof process.env.NEXT_PUBLIC_SUPABASE_URL !== "undefined" &&
