@@ -20,6 +20,9 @@ import {
 } from 'firebase/firestore';
 import { supabase } from './supabaseClient';
 
+// Auto-detect backend
+const HAS_SUPABASE = !!supabase;
+
 export type NewsDoc = {
   id: string;
   title: string;
