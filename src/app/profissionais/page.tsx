@@ -60,17 +60,17 @@ export default function ProfissionaisPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="form-input"
           />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {ALL_CATEGORIES.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-4 py-2 rounded ${selectedCategory === cat ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}
-            >
-              {cat}
-            </button>
-          ))}
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="form-select"
+          >
+            {ALL_CATEGORIES.map(cat => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
         </div>
       </section>
 

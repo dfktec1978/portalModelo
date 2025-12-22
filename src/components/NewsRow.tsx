@@ -48,9 +48,8 @@ export default function NewsRow({
           <div
             className="text-sm text-gray-700"
             style={{ display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
-          >
-            {news.summary}
-          </div>
+            dangerouslySetInnerHTML={{ __html: news.summary || '' }}
+          />
           <div className="text-xs text-gray-400 mt-2">{news.source} • {news.publishedAt ? (news.publishedAt.seconds ? new Date(news.publishedAt.seconds * 1000).toLocaleString() : new Date(news.publishedAt).toLocaleString()) : '—'}</div>
         </div>
       </button>

@@ -41,7 +41,7 @@ export default function Header() {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition">
           <Image
-            src="/img/logos/logo.png"
+            src="/img/logos/dk01.png"
             alt="Portal Modelo"
             width={40}
             height={40}
@@ -65,6 +65,16 @@ export default function Header() {
             Profissionais
           </Link>
         </nav>
+
+        {/* Botão Quero Anunciar */}
+        <a
+          href="https://wa.me/5549999711065?text=Olá! Gostaria de anunciar no Portal Modelo."
+          target="_blank"
+          rel="noopener noreferrer"
+          className="bg-[#FDC500] hover:bg-[#E6B800] text-[#003049] px-4 py-2 rounded font-semibold text-sm transition hidden md:block"
+        >
+          📢 Quero Anunciar
+        </a>
 
         {/* Auth Section */}
         <div className="flex items-center gap-3">
@@ -198,6 +208,15 @@ export default function Header() {
           <Link href="/classificados" className="block text-white hover:text-yellow-400">
             Classificados
           </Link>
+
+          <a
+            href="https://wa.me/5549999711065?text=Olá! Gostaria de anunciar no Portal Modelo."
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block bg-[#FDC500] text-[#003049] text-center py-2 rounded font-semibold mt-3"
+          >
+            📢 Quero Anunciar
+          </a>
 
           <div className="border-t border-white/20 pt-3">
             {user ? (

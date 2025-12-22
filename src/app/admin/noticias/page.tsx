@@ -12,6 +12,7 @@ import {
 } from "@/lib/adminQueries";
 import { fetchNewsById } from "@/lib/newsQueries";
 import ImageUploadNews from "@/components/ImageUploadNews";
+import Editor from "@/components/Editor";
 
 function AdminNoticiasContent() {
   const { user, loading } = useAuth();
@@ -170,7 +171,11 @@ function AdminNoticiasContent() {
 
             <div>
               <label className="form-label">Resumo / conteúdo</label>
-              <textarea placeholder="Resumo / conteúdo" value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} className="form-textarea" />
+              <Editor
+                value={form.summary}
+                onChange={(value) => setForm({ ...form, summary: value })}
+                placeholder="Digite o resumo/conteúdo da notícia..."
+              />
             </div>
 
             <div className="flex gap-2">

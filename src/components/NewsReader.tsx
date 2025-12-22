@@ -102,6 +102,32 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
     setHeroImageIndex(imageIndex);
   };
 
+  // Função para compartilhar notícia
+  const shareNews = async () => {
+    const url = window.location.href;
+    const title = news.title;
+    const text = news.summary ? news.summary.replace(/<[^>]*>/g, '').substring(0, 100) + '...' : title;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title,
+          text,
+          url,
+        });
+      } catch (err) {
+        console.log('Erro ao compartilhar:', err);
+      }
+    } else {
+      // Fallback: copiar para clipboard
+      navigator.clipboard.writeText(`${title}\n\n${text}\n\n${url}`).then(() => {
+        alert('Link copiado para a área de transferência!');
+      }).catch(() => {
+        alert(`Compartilhar: ${title} - ${url}`);
+      });
+    }
+  };
+
   // Normalizar data: pode ser Timestamp (Firebase) ou string ISO (Supabase)
   let dateStr = "—";
   if (news.publishedAt) {
@@ -119,6 +145,12 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold">{news.title}</h1>
           <div className="flex items-center gap-2">
+            <button
+              onClick={shareNews}
+              className="text-sm px-3 py-1 rounded bg-blue-500 text-white hover:bg-blue-600"
+            >
+              Compartilhar
+            </button>
             <button
               onClick={() => {
                 window.location.href = "/noticias";
@@ -188,7 +220,7 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
         {news.content ? (
           <div dangerouslySetInnerHTML={{ __html: news.content }} />
         ) : (
-          <p>{news.summary}</p>
+          <div dangerouslySetInnerHTML={{ __html: news.summary || '' }} />
         )}
       </div>
 
