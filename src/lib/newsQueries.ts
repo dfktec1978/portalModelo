@@ -16,7 +16,8 @@ import {
   getDoc,
   onSnapshot,
 } from "firebase/firestore";
-import supabase from "@/lib/supabase";
+import { supabase } from "@/lib/supabaseClient";
+
 
 const HAS_SUPABASE = typeof process.env.NEXT_PUBLIC_SUPABASE_URL !== "undefined" &&
   process.env.NEXT_PUBLIC_SUPABASE_URL &&
