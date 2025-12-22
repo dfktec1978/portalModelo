@@ -3,7 +3,7 @@
  * CRUD operations para tabela professionals
  */
 
-import { supabase } from "./supabase";
+import { supabase } from "./supabaseClient";
 
 export type Professional = {
   id: string;

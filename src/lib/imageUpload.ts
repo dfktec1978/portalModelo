@@ -2,7 +2,7 @@
  * Utilitários para upload de imagens no Supabase Storage
  */
 
-import { supabase } from "./supabase";
+import { supabase } from "./supabaseClient";
 
 const BUCKET_NAME = "classificados";
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-npm run buildimport { supabase } from "./supabase";
+import { supabase } from "./supabaseClient";
 
 type SupabaseUser = {
   id: string;

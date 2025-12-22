@@ -3,7 +3,7 @@
  * CRUD operations para tabela classifieds
  */
 
-import { supabase } from "./supabase";
+import { supabase } from "./supabaseClient";
 
 export type Classified = {
   id: string;
