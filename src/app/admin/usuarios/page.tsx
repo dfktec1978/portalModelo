@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { useProfile } from "@/lib/useProfile";
 import { supabase } from "@/lib/supabaseClient";
-import { createClient } from "@supabase/supabase-js";
 
 type Profile = {
   id: string;
@@ -110,14 +109,8 @@ export default function AdminUsuarios() {
         // Por enquanto, apenas informar que a loja precisa ser aprovada separadamente
       }
 
-// Atualizar o status do usuário para "active" (usando service role para contornar RLS)
-      // Criar cliente com service role key para ter permissões administrativas
-      const adminSupabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
-
-      const { error: updateError } = await adminSupabase
+// Atualizar o status do usuário para "active" (usando cliente normal - ajustar RLS se necessário)
+      const { error: updateError } = await supabase
         .from("profiles")
         .update({
           status: "active",

@@ -18,21 +18,7 @@ import {
   Timestamp,
   getDoc,
 } from 'firebase/firestore';
-import { createClient } from '@supabase/supabase-js';
-
-// Auto-detect backend
-const HAS_SUPABASE =
-  typeof process.env.NEXT_PUBLIC_SUPABASE_URL !== 'undefined' &&
-  typeof process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY !== 'undefined' &&
-  process.env.NEXT_PUBLIC_SUPABASE_URL &&
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-const supabase = HAS_SUPABASE
-  ? createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-  : null;
+import { supabase } from './supabaseClient';
 
 export type NewsDoc = {
   id: string;
