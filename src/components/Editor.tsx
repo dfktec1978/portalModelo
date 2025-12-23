@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 
 interface EditorProps {
   value: string;
@@ -10,18 +10,35 @@ interface EditorProps {
 
 export default function Editor({ value, onChange, placeholder }: EditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Inicializar conteúdo apenas uma vez
+  useEffect(() => {
+    if (editorRef.current && !isInitialized) {
+      editorRef.current.innerHTML = value || '';
+      setIsInitialized(true);
+    }
+  }, [value, isInitialized]);
 
   const handleInput = useCallback(() => {
     if (editorRef.current) {
-      onChange(editorRef.current.innerHTML);
+      const html = editorRef.current.innerHTML;
+      // Remover placeholder se existir
+      const cleanHtml = html.replace(/<span style="color: #9CA3AF; font-style: italic;">[^<]*<\/span>/, '');
+      onChange(cleanHtml);
     }
   }, [onChange]);
 
   const execCommand = useCallback((command: string, value?: string) => {
     document.execCommand(command, false, value);
-    if (editorRef.current) {
-      onChange(editorRef.current.innerHTML);
-    }
+    // Chamar handleInput após executar comando
+    setTimeout(() => {
+      if (editorRef.current) {
+        const html = editorRef.current.innerHTML;
+        const cleanHtml = html.replace(/<span style="color: #9CA3AF; font-style: italic;">[^<]*<\/span>/, '');
+        onChange(cleanHtml);
+      }
+    }, 0);
   }, [onChange]);
 
   return (
@@ -84,7 +101,6 @@ export default function Editor({ value, onChange, placeholder }: EditorProps) {
         contentEditable
         className="min-h-[200px] p-3 bg-white text-black focus:outline-none focus:ring-2 focus:ring-blue-500 border-0"
         onInput={handleInput}
-        dangerouslySetInnerHTML={{ __html: value }}
         style={{
           outline: 'none'
         }}
@@ -96,6 +112,13 @@ export default function Editor({ value, onChange, placeholder }: EditorProps) {
         onBlur={(e) => {
           if (e.currentTarget.innerHTML === `<span style="color: #9CA3AF; font-style: italic;">${placeholder}</span>`) {
             e.currentTarget.innerHTML = '';
+          }
+        }}
+        onKeyDown={(e) => {
+          // Prevenir comportamento padrão que pode causar problemas
+          if (e.key === 'Enter') {
+            // Permitir quebra de linha normal
+            return;
           }
         }}
       />

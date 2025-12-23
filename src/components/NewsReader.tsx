@@ -108,24 +108,54 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
     const title = news.title;
     const text = news.summary ? news.summary.replace(/<[^>]*>/g, '').substring(0, 100) + '...' : title;
 
+    // Preparar dados para compartilhamento
+    const shareData: any = {
+      title: `${title} - Portal Modelo`,
+      text: `${text}\n\nLeia mais em: ${url}`,
+      url,
+    };
+
+    // Adicionar imagem se disponível (para Web Share API Level 2)
+    if (heroImage && 'files' in navigator) {
+      try {
+        const response = await fetch(heroImage);
+        const blob = await response.blob();
+        const file = new File([blob], 'noticia-imagem.jpg', { type: blob.type });
+        shareData.files = [file];
+      } catch (err) {
+        console.log('Erro ao preparar imagem para compartilhamento:', err);
+      }
+    }
+
     if (navigator.share) {
       try {
-        await navigator.share({
-          title,
-          text,
-          url,
-        });
+        await navigator.share(shareData);
       } catch (err) {
         console.log('Erro ao compartilhar:', err);
+        // Fallback: copiar para clipboard
+        fallbackShare(title, text, url);
       }
     } else {
       // Fallback: copiar para clipboard
-      navigator.clipboard.writeText(`${title}\n\n${text}\n\n${url}`).then(() => {
-        alert('Link copiado para a área de transferência!');
-      }).catch(() => {
-        alert(`Compartilhar: ${title} - ${url}`);
-      });
+      fallbackShare(title, text, url);
     }
+  };
+
+  // Função fallback para compartilhamento
+  const fallbackShare = (title: string, text: string, url: string) => {
+    const shareText = `${title}\n\n${text}\n\n${url}`;
+    navigator.clipboard.writeText(shareText).then(() => {
+      alert('Link copiado para a área de transferência!');
+    }).catch(() => {
+      // Último fallback: mostrar texto para copiar
+      const textArea = document.createElement('textarea');
+      textArea.value = shareText;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      alert('Conteúdo copiado para a área de transferência!');
+    });
   };
 
   // Normalizar data: pode ser Timestamp (Firebase) ou string ISO (Supabase)
