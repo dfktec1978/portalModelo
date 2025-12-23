@@ -23,7 +23,7 @@ export default function Footer() {
           className="opacity-90 hover:opacity-100 transition"
         />
         <p className="text-white text-sm text-center">
-          © {new Date().getFullYear()} Portal Modelo — Todos os direitos reservados — By Daniel Felipe Kroth.
+          © {new Date().getFullYear()} Portal Modelo — Todos os direitos reservados à DK Works Studio.
         </p>
         <p className="text-white/60 text-xs text-center">
           Visitas: {visitCount.toLocaleString()}

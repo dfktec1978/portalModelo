@@ -9,6 +9,7 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [heroImageIndex, setHeroImageIndex] = useState(0);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -103,59 +104,46 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
   };
 
   // Função para compartilhar notícia
-  const shareNews = async () => {
+  const shareNews = () => {
+    setShareModalOpen(true);
+  };
+
+  // Função para compartilhar via WhatsApp
+  const shareViaWhatsApp = () => {
     const url = window.location.href;
     const title = news.title;
     const text = news.summary ? news.summary.replace(/<[^>]*>/g, '').substring(0, 100) + '...' : title;
-
-    // Preparar dados para compartilhamento
-    const shareData: any = {
-      title: `${title} - Portal Modelo`,
-      text: `${text}\n\nLeia mais em: ${url}`,
-      url,
-    };
-
-    // Adicionar imagem se disponível (para Web Share API Level 2)
-    if (heroImage && 'files' in navigator) {
-      try {
-        const response = await fetch(heroImage);
-        const blob = await response.blob();
-        const file = new File([blob], 'noticia-imagem.jpg', { type: blob.type });
-        shareData.files = [file];
-      } catch (err) {
-        console.log('Erro ao preparar imagem para compartilhamento:', err);
-      }
-    }
-
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-      } catch (err) {
-        console.log('Erro ao compartilhar:', err);
-        // Fallback: copiar para clipboard
-        fallbackShare(title, text, url);
-      }
-    } else {
-      // Fallback: copiar para clipboard
-      fallbackShare(title, text, url);
-    }
+    const shareText = `${title}\n\n${text}\n\nLeia mais: ${url}`;
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+    window.open(whatsappUrl, '_blank');
+    setShareModalOpen(false);
   };
 
-  // Função fallback para compartilhamento
-  const fallbackShare = (title: string, text: string, url: string) => {
-    const shareText = `${title}\n\n${text}\n\n${url}`;
-    navigator.clipboard.writeText(shareText).then(() => {
+  // Função para compartilhar via Facebook
+  const shareViaFacebook = () => {
+    const url = window.location.href;
+    const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+    window.open(facebookUrl, '_blank');
+    setShareModalOpen(false);
+  };
+
+  // Função para copiar link
+  const copyLink = async () => {
+    const url = window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
       alert('Link copiado para a área de transferência!');
-    }).catch(() => {
-      // Último fallback: mostrar texto para copiar
+    } catch (err) {
+      // Fallback para navegadores antigos
       const textArea = document.createElement('textarea');
-      textArea.value = shareText;
+      textArea.value = url;
       document.body.appendChild(textArea);
       textArea.select();
       document.execCommand('copy');
       document.body.removeChild(textArea);
-      alert('Conteúdo copiado para a área de transferência!');
-    });
+      alert('Link copiado para a área de transferência!');
+    }
+    setShareModalOpen(false);
   };
 
   // Normalizar data: pode ser Timestamp (Firebase) ou string ISO (Supabase)
@@ -326,6 +314,44 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
                 {currentImageIndex + 1} / {allImages.length}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Compartilhamento */}
+      {shareModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShareModalOpen(false)}>
+          <div className="bg-white rounded-lg p-6 max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-4 text-center">Compartilhar Notícia</h3>
+            <div className="space-y-3">
+              <button
+                onClick={shareViaWhatsApp}
+                className="w-full flex items-center gap-3 p-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+              >
+                <span className="text-xl">📱</span>
+                WhatsApp
+              </button>
+              <button
+                onClick={shareViaFacebook}
+                className="w-full flex items-center gap-3 p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <span className="text-xl">📘</span>
+                Facebook
+              </button>
+              <button
+                onClick={copyLink}
+                className="w-full flex items-center gap-3 p-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                <span className="text-xl">🔗</span>
+                Copiar Link
+              </button>
+            </div>
+            <button
+              onClick={() => setShareModalOpen(false)}
+              className="w-full mt-4 p-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+            >
+              Cancelar
+            </button>
           </div>
         </div>
       )}
