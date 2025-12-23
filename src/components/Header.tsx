@@ -41,7 +41,7 @@ export default function Header() {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition">
           <Image
-            src="/img/logos/dk01.png"
+            src="/img/logos/logo.png"
             alt="Portal Modelo"
             width={40}
             height={40}

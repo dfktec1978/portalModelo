@@ -82,7 +82,7 @@ export default function Editor({ value, onChange, placeholder }: EditorProps) {
       <div
         ref={editorRef}
         contentEditable
-        className="min-h-[200px] p-3 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 border-0"
+        className="min-h-[200px] p-3 bg-white text-black focus:outline-none focus:ring-2 focus:ring-blue-500 border-0"
         onInput={handleInput}
         dangerouslySetInnerHTML={{ __html: value }}
         style={{

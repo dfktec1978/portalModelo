@@ -1,5 +1,5 @@
 COMIT DIÁRIOS:
 
 git add .
-git commit -m "Teste de sincronização"
+git commit -m "Atualização --> "
 git push
