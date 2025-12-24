@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useState, useEffect } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 
 interface EditorProps {
   value: string;
@@ -10,15 +10,17 @@ interface EditorProps {
 
 export default function Editor({ value, onChange, placeholder }: EditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Inicializar conteúdo apenas uma vez
+  // Keep editor content in sync with `value` prop when it changes from outside.
   useEffect(() => {
-    if (editorRef.current && !isInitialized) {
-      editorRef.current.innerHTML = value || '';
-      setIsInitialized(true);
+    const el = editorRef.current;
+    if (!el) return;
+    const current = el.innerHTML || '';
+    const incoming = value || '';
+    if (incoming !== current) {
+      el.innerHTML = incoming;
     }
-  }, [value, isInitialized]);
+  }, [value]);
 
   const handleInput = useCallback(() => {
     if (editorRef.current) {

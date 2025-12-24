@@ -109,7 +109,7 @@ export default function ClassifiedDetailPage() {
             {/* Description */}
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Descrição</h2>
-              <p className="text-gray-700 whitespace-pre-wrap">{classified.description}</p>
+              <div className="text-gray-700" dangerouslySetInnerHTML={{ __html: classified.description || "" }} />
             </div>
           </div>
 

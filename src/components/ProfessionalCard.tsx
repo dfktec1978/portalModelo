@@ -3,9 +3,10 @@ import { type Professional } from '@/lib/professionalQueries';
 
 interface ProfessionalCardProps {
   professional: Professional;
+  onClick?: () => void;
 }
 
-export default function ProfessionalCard({ professional }: ProfessionalCardProps) {
+export default function ProfessionalCard({ professional, onClick }: ProfessionalCardProps) {
   const handleContact = () => {
     if (professional.phone) {
       const phoneNumber = professional.phone.replace(/\D/g, '');
@@ -14,7 +15,10 @@ export default function ProfessionalCard({ professional }: ProfessionalCardProps
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+    <div
+      onClick={onClick}
+      className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+    >
       {professional.profile_image && (
         <div className="mb-4">
           <Image
@@ -44,7 +48,7 @@ export default function ProfessionalCard({ professional }: ProfessionalCardProps
         </span>
       </div>
 
-      <p className="text-sm text-gray-600 mt-2 line-clamp-3">{professional.description}</p>
+      <div className="text-sm text-gray-600 mt-2 line-clamp-3" dangerouslySetInnerHTML={{ __html: professional.description || "" }} />
 
       <div className="mt-4 text-center">
         <p className="text-sm text-gray-500">{professional.city}</p>

@@ -129,7 +129,7 @@ export default function ProfessionalDetailPage() {
             {/* Description */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold text-[#003049] mb-4">Sobre</h2>
-              <p className="text-gray-700 leading-relaxed">{professional.description}</p>
+              <div className="text-gray-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: professional.description || "" }} />
             </div>
 
             {/* Gallery */}

@@ -204,9 +204,9 @@ function AdminNoticiasContent() {
             <div key={n.id} className="bg-white rounded shadow p-4 flex justify-between items-start">
               <div className="flex gap-4">
                 {n.imageUrls && n.imageUrls[0] ? (
-                  <img src={n.imageUrls[0]} alt="thumb" className="w-28 h-20 object-cover rounded" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  <img src={n.imageUrls[0]} alt="thumb" className="w-28 h-20 object-cover rounded" style={{ width: 'auto' }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                 ) : n.imageData && n.imageData[0] ? (
-                  <img src={n.imageData[0]} alt="thumb" className="w-28 h-20 object-cover rounded" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  <img src={n.imageData[0]} alt="thumb" className="w-28 h-20 object-cover rounded" style={{ width: 'auto' }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                 ) : null}
                 <div>
                   <h3 className="text-lg font-semibold">{n.title}</h3>

@@ -15,6 +15,9 @@ interface ImageUploadNewsProps {
   onHeroImageChange: (index: number) => void;
   disabled?: boolean;
   maxImages?: number;
+  // Optional hooks to override upload/delete behavior (for products reuse)
+  uploadFn?: (file: File, ownerIdOrId: string) => Promise<{ success: boolean; url?: string; error?: string }>;
+  deleteFn?: (url: string) => Promise<boolean>;
 }
 
 export default function ImageUploadNews({
@@ -24,6 +27,8 @@ export default function ImageUploadNews({
   onHeroImageChange,
   disabled = false,
   maxImages = 5,
+  uploadFn,
+  deleteFn,
 }: ImageUploadNewsProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +68,8 @@ export default function ImageUploadNews({
 
         // Fazer upload (usando um ID temporário)
         const tempId = `temp-${Date.now()}-${Math.random()}`;
-        const result = await uploadNewsImage(file, tempId);
+        // Use override upload function when provided (e.g., for products)
+        const result = await (uploadFn ? uploadFn(file, tempId) : uploadNewsImage(file, tempId));
 
         if (result.success && result.url) {
           newImages.push(result.url);
@@ -90,7 +96,7 @@ export default function ImageUploadNews({
 
   async function handleRemoveImage(imageUrl: string) {
     setError(null);
-    const deleted = await deleteNewsImage(imageUrl);
+    const deleted = await (deleteFn ? deleteFn(imageUrl) : deleteNewsImage(imageUrl));
 
     if (deleted) {
       const newImages = images.filter((img) => img !== imageUrl);
@@ -205,6 +211,7 @@ export default function ImageUploadNews({
                     src={imageUrl}
                     alt={`Imagem ${index + 1}`}
                     fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     className="object-cover"
                   />
                 </div>

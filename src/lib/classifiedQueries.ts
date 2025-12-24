@@ -51,6 +51,23 @@ export async function createClassified(
   return { data: classified, error };
 }
 
+// Upload image for classified via server endpoint (uses service role)
+import { uploadFile, deleteFile } from './uploadService';
+
+export async function uploadClassifiedImage(userId: string, file: File) {
+  const res = await uploadFile('classified', userId, file);
+  return { publicUrl: res.publicUrl, error: res.error ? new Error(res.error) : null };
+}
+
+// Delete classified image via server endpoint (by public URL)
+export async function deleteClassifiedImage(publicUrl: string) {
+  const r = await deleteFile(publicUrl);
+  return r.success;
+}
+
+// Delete classified image via server endpoint (by public URL)
+
+
 // READ - Listar todos os classificados ativos
 export async function listClassifieds(filters?: {
   category?: string;

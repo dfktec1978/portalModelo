@@ -1,10 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { useProfile } from "@/lib/useProfile";
-import { listProfessionals, updateProfessionalFeatured, type Professional, createProfessional } from "@/lib/professionalQueries";
+import { listProfessionals, updateProfessionalFeatured, type Professional, createProfessional, adminDeleteProfessional, getProfessional, updateProfessional } from "@/lib/professionalQueries";
+import Link from "next/link";
 import { PROFESSIONAL_CATEGORIES, ALL_CATEGORIES } from "@/lib/professionalConstants";
-import ImageUpload from "@/components/ImageUpload";
+import ImageUploadNews from "@/components/ImageUploadNews";
+import Editor from "@/components/Editor";
 
 export default function AdminProfissionaisPage() {
   const { user, loading } = useAuth();
@@ -30,10 +33,57 @@ export default function AdminProfissionaisPage() {
     featured: false,
   });
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     loadProfessionals();
   }, []);
+
+  useEffect(() => {
+    const editId = searchParams.get('edit');
+    if (editId) {
+      loadProfessionalForEdit(editId);
+    }
+  }, [searchParams]);
+
+  async function loadProfessionalForEdit(id: string) {
+    try {
+      const { data, error } = await getProfessional(id);
+      if (error) {
+        console.error('Erro ao carregar profissional para edição:', error);
+        alert('Erro ao carregar profissional para edição');
+        return;
+      }
+      const p = data;
+      if (!p) {
+        alert('Profissional não encontrado');
+        return;
+      }
+      setForm({
+        name: p.name || "",
+        category: p.category || "",
+        specialty: p.specialty || "",
+        city: p.city || "Modelo-SC",
+        neighborhood: p.neighborhood || "",
+        phone: p.phone || "",
+        email: p.email || "",
+        description: p.description || "",
+        profile_images: p.profile_image ? [p.profile_image] : [],
+        instagram: p.instagram || "",
+        facebook: p.facebook || "",
+        website: p.website || "",
+        working_hours: p.working_hours || "",
+        emergency_service: p.emergency_service || false,
+        gallery_images: p.gallery_images || [],
+        featured: p.featured || false,
+      });
+      setEditingId(id);
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao carregar profissional para edição');
+    }
+  }
 
   const loadProfessionals = async () => {
     const { data, error } = await listProfessionals();
@@ -89,8 +139,17 @@ export default function AdminProfissionaisPage() {
         gallery_images: form.gallery_images,
         featured: form.featured,
       };
-      await createProfessional(payload);
-      alert('Profissional criado com sucesso');
+      if (editingId) {
+        const { data, error } = await updateProfessional(editingId, {
+          ...payload,
+          profile_image: form.profile_images[0] || null,
+        } as any);
+        if (error) throw error;
+        alert('Profissional atualizado com sucesso');
+      } else {
+        await createProfessional(payload);
+        alert('Profissional criado com sucesso');
+      }
       setForm({
         name: "",
         category: "",
@@ -109,6 +168,7 @@ export default function AdminProfissionaisPage() {
         gallery_images: [],
         featured: false,
       });
+      setEditingId(null);
       loadProfessionals(); // Recarregar lista
     } catch (error: any) {
       console.error('Erro ao salvar:', error);
@@ -233,19 +293,19 @@ export default function AdminProfissionaisPage() {
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="form-label">Descrição dos serviços</label>
-                <textarea
-                  placeholder="Descrição dos serviços"
+                <Editor
                   value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="form-textarea"
-                  required
+                  onChange={(val) => setForm({ ...form, description: val })}
+                  placeholder="Descrição dos serviços"
                 />
               </div>
               <div>
                 <label className="form-label">Foto ou logo</label>
-                <ImageUpload
+                <ImageUploadNews
                   images={form.profile_images}
+                  heroImageIndex={0}
                   onImagesChange={(images) => setForm({ ...form, profile_images: images })}
+                  onHeroImageChange={() => {}}
                   disabled={saving}
                   maxImages={1}
                 />
@@ -330,13 +390,76 @@ export default function AdminProfissionaisPage() {
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={saving}
-            className="bg-blue-700 text-white px-4 py-2 rounded"
-          >
-            {saving ? 'Salvando...' : 'Adicionar Profissional'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="bg-blue-700 text-white px-4 py-2 rounded"
+            >
+              {saving ? 'Salvando...' : (editingId ? 'Atualizar' : 'Adicionar Profissional')}
+            </button>
+            {editingId && (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!confirm('Tem certeza que deseja excluir este profissional?')) return;
+                  try {
+                    const { error } = await adminDeleteProfessional(editingId);
+                    if (error) {
+                      alert('Erro ao deletar: ' + error.message);
+                    } else {
+                      setEditingId(null);
+                      await loadProfessionals();
+                      setForm({
+                        name: "",
+                        category: "",
+                        specialty: "",
+                        city: "Modelo-SC",
+                        neighborhood: "",
+                        phone: "",
+                        email: "",
+                        description: "",
+                        profile_images: [],
+                        instagram: "",
+                        facebook: "",
+                        website: "",
+                        working_hours: "",
+                        emergency_service: false,
+                        gallery_images: [],
+                        featured: false,
+                      });
+                    }
+                  } catch (e) {
+                    console.error(e);
+                    alert('Erro ao deletar');
+                  }
+                }}
+                className="bg-red-600 text-white px-4 py-2 rounded"
+              >
+                Excluir
+              </button>
+            )}
+            {editingId && (
+              <button type="button" onClick={() => { setEditingId(null); setForm({
+                name: "",
+                category: "",
+                specialty: "",
+                city: "Modelo-SC",
+                neighborhood: "",
+                phone: "",
+                email: "",
+                description: "",
+                profile_images: [],
+                instagram: "",
+                facebook: "",
+                website: "",
+                working_hours: "",
+                emergency_service: false,
+                gallery_images: [],
+                featured: false,
+              }); }} className="bg-gray-200 px-4 py-2 rounded">Cancelar</button>
+            )}
+          </div>
         </div>
       </form>
 
@@ -368,6 +491,32 @@ export default function AdminProfissionaisPage() {
                 className={`px-3 py-1 rounded ${p.featured ? 'bg-yellow-500 text-white' : 'bg-gray-500 text-white'}`}
               >
                 {p.featured ? 'Remover Destaque' : 'Destacar'}
+              </button>
+              <Link
+                href={`/admin/profissionais?edit=${p.id}`}
+                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
+              >
+                Editar
+              </Link>
+
+              <button
+                onClick={async () => {
+                  if (!confirm('Tem certeza que deseja deletar este profissional permanentemente?')) return;
+                  try {
+                    const { error } = await adminDeleteProfessional(p.id);
+                    if (error) {
+                      alert('Erro ao deletar: ' + error.message);
+                    } else {
+                      await loadProfessionals();
+                    }
+                  } catch (e) {
+                    console.error(e);
+                    alert('Erro ao deletar');
+                  }
+                }}
+                className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm"
+              >
+                Deletar
               </button>
             </div>
           </div>

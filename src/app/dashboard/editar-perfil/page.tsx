@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
-import ImageUpload from "@/components/ImageUpload";
+import ImageUploadNews from "@/components/ImageUploadNews";
+import { uploadClassifiedImage, deleteClassifiedImage } from "@/lib/classifiedQueries";
 
 type Profile = {
   id: string;
@@ -372,11 +373,20 @@ export default function EditarPerfilPage() {
               <label className="form-label">
                 Foto de Perfil
               </label>
-              <ImageUpload
+              <ImageUploadNews
                 images={profileImages}
+                heroImageIndex={0}
                 onImagesChange={setProfileImages}
+                onHeroImageChange={() => {}}
                 disabled={saving}
                 maxImages={1}
+                uploadFn={async (file: File) => {
+                  const res = await uploadClassifiedImage((user && user.id) || 'anon', file);
+                  return { success: !!res.publicUrl, url: res.publicUrl, error: res.error?.message || (res.error ? String(res.error) : undefined) };
+                }}
+                deleteFn={async (url: string) => {
+                  return await deleteClassifiedImage(url);
+                }}
               />
               <p className="text-xs text-gray-500 mt-1">
                 Faça upload da sua foto de perfil (opcional)

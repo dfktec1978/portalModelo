@@ -3,8 +3,9 @@
  */
 
 import { supabase } from "./supabaseClient";
+import { uploadFile, deleteFile, getBucketName } from "./uploadService";
 
-const BUCKET_NAME = "classificados";
+const BUCKET_NAME = process.env.NEXT_PUBLIC_CLASSIFIED_BUCKET || "classificados";
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
@@ -51,49 +52,9 @@ export async function uploadClassifiedImage(
     return { success: false, error: validationError };
   }
 
-  try {
-    // Gerar nome único para o arquivo
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(7);
-    const ext = file.name.split(".").pop();
-    // Use flat naming: uploads/timestamp-random-originalname
-    // This avoids nested directories which may cause 400 errors in some Supabase configs
-    const originalName = file.name
-      .replace(/\.[^/.]+$/, "") // Remove extension
-      .substring(0, 20)           // Limit length
-      .replace(/[^a-z0-9-]/gi, ""); // Keep only safe chars
-    const fileName = `uploads/${timestamp}-${random}-${originalName}.${ext}`;
-
-    // Upload do arquivo
-    const { data, error } = await supabase.storage
-      .from(BUCKET_NAME)
-      .upload(fileName, file, {
-        cacheControl: "3600",
-        upsert: false,
-      });
-
-    if (error) {
-      return {
-        success: false,
-        error: error.message || "Erro ao fazer upload da imagem",
-      };
-    }
-
-    // Gerar URL pública
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from(BUCKET_NAME).getPublicUrl(data.path);
-
-    return {
-      success: true,
-      url: publicUrl,
-    };
-  } catch (err) {
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : "Erro desconhecido",
-    };
-  }
+    // Delegate to unified upload service
+    const res = await uploadFile('classified', classifiedId, file, { entityId: classifiedId });
+    return { success: !!res.publicUrl, url: res.publicUrl || undefined, error: res.error || undefined };
 }
 
 /**
@@ -101,25 +62,11 @@ export async function uploadClassifiedImage(
  */
 export async function deleteClassifiedImage(imageUrl: string): Promise<boolean> {
   try {
-    // Extrair path da URL pública
-    const urlParts = imageUrl.split(`/${BUCKET_NAME}/`);
-    if (urlParts.length !== 2) {
-      console.error("Invalid image URL format");
-      return false;
+    const r = await deleteFile(imageUrl);
+    if (!r.success) {
+      console.error('Error deleting image:', r.error);
     }
-
-    const filePath = urlParts[1];
-
-    const { error } = await supabase.storage
-      .from(BUCKET_NAME)
-      .remove([filePath]);
-
-    if (error) {
-      console.error("Error deleting image:", error);
-      return false;
-    }
-
-    return true;
+    return r.success;
   } catch (err) {
     console.error("Error deleting image:", err);
     return false;
@@ -178,47 +125,8 @@ export async function uploadNewsImage(
     return { success: false, error: validationError };
   }
 
-  try {
-    // Gerar nome único para o arquivo
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(7);
-    const ext = file.name.split(".").pop();
-    const originalName = file.name
-      .replace(/\.[^/.]+$/, "") // Remove extension
-      .substring(0, 20)           // Limit length
-      .replace(/[^a-z0-9-]/gi, ""); // Keep only safe chars
-    const fileName = `news/${timestamp}-${random}-${originalName}.${ext}`;
-
-    // Upload do arquivo
-    const { data, error } = await supabase.storage
-      .from(BUCKET_NAME)
-      .upload(fileName, file, {
-        cacheControl: "3600",
-        upsert: false,
-      });
-
-    if (error) {
-      return {
-        success: false,
-        error: error.message || "Erro ao fazer upload da imagem",
-      };
-    }
-
-    // Gerar URL pública
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from(BUCKET_NAME).getPublicUrl(data.path);
-
-    return {
-      success: true,
-      url: publicUrl,
-    };
-  } catch (err) {
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : "Erro desconhecido",
-    };
-  }
+    const res = await uploadFile('news', newsId, file, { entityId: newsId });
+    return { success: !!res.publicUrl, url: res.publicUrl || undefined, error: res.error || undefined };
 }
 
 /**
@@ -226,25 +134,9 @@ export async function uploadNewsImage(
  */
 export async function deleteNewsImage(imageUrl: string): Promise<boolean> {
   try {
-    // Extrair path da URL pública
-    const urlParts = imageUrl.split(`/${BUCKET_NAME}/`);
-    if (urlParts.length !== 2) {
-      console.error("Invalid image URL format");
-      return false;
-    }
-
-    const filePath = urlParts[1];
-
-    const { error } = await supabase.storage
-      .from(BUCKET_NAME)
-      .remove([filePath]);
-
-    if (error) {
-      console.error("Error deleting news image:", error);
-      return false;
-    }
-
-    return true;
+    const r = await deleteFile(imageUrl);
+    if (!r.success) console.error('Error deleting news image:', r.error);
+    return r.success;
   } catch (err) {
     console.error("Error deleting news image:", err);
     return false;

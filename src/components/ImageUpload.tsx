@@ -170,6 +170,7 @@ export default function ImageUpload({
                     src={imageUrl}
                     alt={`Imagem ${index + 1}`}
                     fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     className="object-cover"
                   />
                 </div>

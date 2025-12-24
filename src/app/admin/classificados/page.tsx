@@ -1,11 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { useProfile } from "@/lib/useProfile";
-import { listClassifieds, Classified, adminUpdateClassified, adminDeleteClassified, createClassified, getCategories } from "@/lib/classifiedQueries";
+import { listClassifieds, Classified, adminUpdateClassified, adminDeleteClassified, createClassified, getCategories, getClassified } from "@/lib/classifiedQueries";
 import Image from "next/image";
 import Link from "next/link";
-import ImageUpload from "@/components/ImageUpload";
+import ImageUploadNews from "@/components/ImageUploadNews";
+import Editor from "@/components/Editor";
 
 export default function AdminClassificados() {
   const { user, loading } = useAuth();
@@ -25,6 +27,8 @@ export default function AdminClassificados() {
   const [newCategory, setNewCategory] = useState("");
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (!loading && !profileLoading && profile?.role === "admin") {
@@ -32,6 +36,39 @@ export default function AdminClassificados() {
       loadCategories();
     }
   }, [loading, profileLoading, profile]);
+
+  useEffect(() => {
+    const editId = searchParams.get('edit');
+    if (editId) {
+      loadClassifiedForEdit(editId);
+    }
+  }, [searchParams]);
+
+  async function loadClassifiedForEdit(id: string) {
+    setLoadingClassifieds(true);
+    try {
+      const { data, error } = await getClassified(id);
+      if (error || !data) {
+        alert('Erro ao carregar classificado para edição');
+        return;
+      }
+      const c = data as Classified;
+      setForm({
+        title: c.title || "",
+        description: c.description || "",
+        category: c.category || "",
+        location: c.location || "",
+        price: c.price ? String(c.price) : "",
+        imageUrls: Array.isArray(c.image_urls) ? c.image_urls as string[] : (c.image_urls ? [c.image_urls as any] : []),
+      });
+      setEditingId(id);
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao carregar classificado para edição');
+    } finally {
+      setLoadingClassifieds(false);
+    }
+  }
 
   async function loadClassifieds() {
     setLoadingClassifieds(true);
@@ -102,9 +139,16 @@ export default function AdminClassificados() {
         price: parseFloat(form.price) || 0,
         image_urls: form.imageUrls,
       };
-      await createClassified(user?.id || 'admin', payload);
-      alert('Classificado criado com sucesso');
+      if (editingId) {
+        const { data, error } = await adminUpdateClassified(editingId, payload);
+        if (error) throw error;
+        alert('Classificado atualizado com sucesso');
+      } else {
+        await createClassified(user?.id || 'admin', payload);
+        alert('Classificado criado com sucesso');
+      }
       setForm({ title: "", description: "", category: "", location: "", price: "", imageUrls: [] });
+      setEditingId(null);
       loadClassifieds(); // Recarregar lista
     } catch (error: any) {
       console.error('Erro ao salvar:', error);
@@ -197,28 +241,47 @@ export default function AdminClassificados() {
           </div>
           <div>
             <label className="form-label">Descrição</label>
-            <textarea
-              placeholder="Descrição"
+            <Editor
               value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="form-textarea"
+              onChange={(val) => setForm({ ...form, description: val })}
+              placeholder="Descrição"
             />
           </div>
           <div>
             <label className="form-label">Imagens</label>
-            <ImageUpload
+            <ImageUploadNews
               images={form.imageUrls}
+              heroImageIndex={0}
               onImagesChange={(images) => setForm({ ...form, imageUrls: images })}
+              onHeroImageChange={() => {}}
               disabled={saving}
+              maxImages={5}
             />
           </div>
-          <button
-            type="submit"
-            disabled={saving}
-            className="bg-blue-700 text-white px-4 py-2 rounded"
-          >
-            {saving ? 'Salvando...' : 'Adicionar Classificado'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="bg-blue-700 text-white px-4 py-2 rounded"
+            >
+              {saving ? 'Salvando...' : (editingId ? 'Atualizar' : 'Adicionar Classificado')}
+            </button>
+            {editingId && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!confirm('Tem certeza que deseja excluir este classificado?')) return;
+                  handleDelete(editingId);
+                }}
+                className="bg-red-600 text-white px-4 py-2 rounded"
+              >
+                Excluir
+              </button>
+            )}
+            {editingId && (
+              <button type="button" onClick={() => { setEditingId(null); setForm({ title: "", description: "", category: "", location: "", price: "", imageUrls: [] }); }} className="bg-gray-200 px-4 py-2 rounded">Cancelar</button>
+            )}
+          </div>
         </div>
       </form>
 
@@ -281,7 +344,7 @@ export default function AdminClassificados() {
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-lg text-[#003049] truncate">{classified.title}</h3>
-                  <p className="text-gray-600 text-sm line-clamp-2">{classified.description}</p>
+                  <div className="text-gray-600 text-sm line-clamp-2" dangerouslySetInnerHTML={{ __html: classified.description || "" }} />
                   <div className="flex items-center gap-4 mt-2 text-sm">
                     <span className="text-[#FDC500] font-medium">R$ {classified.price?.toFixed(2) || "0.00"}</span>
                     <span className="text-gray-600">{classified.category}</span>
@@ -311,6 +374,12 @@ export default function AdminClassificados() {
                     className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm"
                   >
                     Deletar
+                  </button>
+                  <button
+                    onClick={() => window.location.href = `?edit=${classified.id}`}
+                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
+                  >
+                    Editar
                   </button>
                 </div>
               </div>

@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClassified } from "@/lib/classifiedQueries";
 import { useAuth } from "@/lib/AuthContext";
-import ImageUpload from "@/components/ImageUpload";
+import ImageUploadNews from "@/components/ImageUploadNews";
+import { uploadClassifiedImage, deleteClassifiedImage } from "@/lib/classifiedQueries";
+import Editor from "@/components/Editor";
 
 export default function NovoClassificadoPage() {
   const router = useRouter();
@@ -144,15 +146,10 @@ export default function NovoClassificadoPage() {
               <label htmlFor="description" className="form-label">
                 Descrição *
               </label>
-              <textarea
-                id="description"
-                name="description"
+              <Editor
                 value={formData.description}
-                onChange={handleChange}
+                onChange={(val) => setFormData((prev) => ({ ...prev, description: val }))}
                 placeholder="Descreva o produto ou serviço em detalhes..."
-                rows={5}
-                maxLength={1000}
-                className="form-textarea"
               />
               <p className="text-xs text-gray-500 mt-1">
                 {formData.description.length}/1000 caracteres
@@ -218,11 +215,20 @@ export default function NovoClassificadoPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Imagens
               </label>
-              <ImageUpload
+              <ImageUploadNews
                 images={images}
+                heroImageIndex={0}
                 onImagesChange={setImages}
+                onHeroImageChange={() => {}}
                 disabled={loading}
                 maxImages={5}
+                uploadFn={async (file: File) => {
+                  const res = await uploadClassifiedImage(user!.id, file);
+                  return { success: !!res.publicUrl, url: res.publicUrl, error: res.error?.message || (res.error ? String(res.error) : undefined) };
+                }}
+                deleteFn={async (url: string) => {
+                  return await deleteClassifiedImage(url);
+                }}
               />
             </div>
 
