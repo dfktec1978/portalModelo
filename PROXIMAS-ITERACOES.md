@@ -22,7 +22,7 @@ Implementar sistema completo de CRUD para lojas, permitindo que lojistas criem e
 - getStoreStats(userId)
 ```
 
-#### 2. Páginas
+#### 2. Páginass
 
 ```
 ✅ /lojas - Listagem pública
