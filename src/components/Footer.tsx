@@ -16,7 +16,7 @@ export default function Footer() {
     <footer style={{ backgroundColor: "#293B63" }} className="text-white py-6">
       <div className="max-w-6xl mx-auto flex flex-col items-center gap-2 px-2">
         <Image
-          src="/img/logos/dk01.png"
+          src="/img/logos/dkTransparente.png"
           alt="DK Tecnologia"
           width={160}
           height={90}

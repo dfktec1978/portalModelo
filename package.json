@@ -25,6 +25,7 @@
     "dotenv": "^17.2.3",
     "firebase": "^12.6.0",
     "firebase-admin": "^13.6.0",
+    "isomorphic-dompurify": "^2.35.0",
     "next": "^16.1.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
