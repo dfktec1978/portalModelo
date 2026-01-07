@@ -1,9 +1,22 @@
-import Image from 'next/image';
+﻿import Image from 'next/image';
 import { type Professional } from '@/lib/professionalQueries';
+import DOMPurify from 'isomorphic-dompurify';
+import Link from 'next/link';
 
 interface ProfessionalCardProps {
   professional: Professional;
   onClick?: () => void;
+}
+
+/* helper simples para decodificar entidades */
+function decodeEntities(input: string) {
+  if (!input) return "";
+  return input
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
 }
 
 export default function ProfessionalCard({ professional, onClick }: ProfessionalCardProps) {
@@ -13,6 +26,13 @@ export default function ProfessionalCard({ professional, onClick }: Professional
       window.open(`https://wa.me/55${phoneNumber}`, '_blank');
     }
   };
+
+  const rawDesc = professional.description || "";
+  const decoded = decodeEntities(rawDesc);
+  const safeHtml = DOMPurify.sanitize(decoded);
+  const contentSafe = DOMPurify.sanitize(professional.content || '');
+  const summarySafe = DOMPurify.sanitize(professional.summary || '');
+  const safe = DOMPurify.sanitize(professional.description || '');
 
   return (
     <div
@@ -48,7 +68,10 @@ export default function ProfessionalCard({ professional, onClick }: Professional
         </span>
       </div>
 
-      <div className="text-sm text-gray-600 mt-2 line-clamp-3" dangerouslySetInnerHTML={{ __html: professional.description || "" }} />
+      <div
+        className="text-sm text-gray-600 mt-2 line-clamp-3"
+        dangerouslySetInnerHTML={{ __html: safeHtml }}
+      />
 
       <div className="mt-4 text-center">
         <p className="text-sm text-gray-500">{professional.city}</p>
@@ -65,6 +88,33 @@ export default function ProfessionalCard({ professional, onClick }: Professional
           📱 WhatsApp
         </button>
       )}
+
+      <div className="text-sm text-gray-600 mt-2 line-clamp-3"
+        dangerouslySetInnerHTML={{ __html: summarySafe }}
+      />
+      <div dangerouslySetInnerHTML={{ __html: contentSafe }} />
+      <div className="text-gray-700" dangerouslySetInnerHTML={{ __html: safe }} />
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Link href={`/dashboard/produtos`} className="px-3 py-2 bg-white/10 rounded">Gerenciar Produtos</Link>
+        <Link href={`/lojas/${professional.id}/editar`} className="px-3 py-2 bg-white/10 rounded">Editar Loja</Link>
+        <a
+          href="https://vitrine.seguradora.exemplo"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-white hover:text-yellow-400"
+        >
+          Vitrine Segura
+        </a>
+        <a
+          href="https://dkworks.exemplo"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-white hover:text-yellow-400"
+        >
+          DKWorks
+        </a>
+      </div>
     </div>
   );
 }
