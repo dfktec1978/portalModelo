@@ -1,26 +1,6 @@
-﻿"use client";
+"use client";
 import React, { useEffect, useState, useMemo } from "react";
 import { fetchNewsById, fetchNewsSuggestions, NewsDoc } from "@/lib/newsQueries";
-
-function SafeHtml({ html, className }: { html?: string; className?: string }) {
-  const [safe, setSafe] = useState<string>("");
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      const raw = html || "";
-      if (typeof window === "undefined") {
-        const cleaned = raw.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "");
-        if (mounted) setSafe(cleaned);
-        return;
-      }
-      const mod = await import("isomorphic-dompurify");
-      const DOMPurify = (mod as any).default || mod;
-      if (mounted) setSafe(DOMPurify.sanitize(raw));
-    })();
-    return () => { mounted = false; };
-  }, [html]);
-  return <div className={className} dangerouslySetInnerHTML={{ __html: safe }} />;
-}
 
 export default function NewsReader({ id, onCloseAction }: { id: string; onCloseAction?: () => void }) {
   const [news, setNews] = useState<NewsDoc | null>(null);
@@ -200,8 +180,7 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
           </div>
         </div>
 
-      {/* Layout Hero + Mosaico */} 
-
+      {/* Layout Hero + Mosaico */}
       {allImages.length > 0 && (
         <div className="mb-6">
           {/* Imagem Hero (Capa) */}
@@ -257,9 +236,9 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
 
       <div className="prose max-w-none text-gray-800 mb-6">
         {news.content ? (
-          <SafeHtml html={news.content} className="prose max-w-none text-gray-800 mb-6" />
+          <div dangerouslySetInnerHTML={{ __html: news.content }} />
         ) : (
-          <SafeHtml html={news.summary || ''} className="prose max-w-none text-gray-800 mb-6" />
+          <div dangerouslySetInnerHTML={{ __html: news.summary || '' }} />
         )}
       </div>
 
@@ -283,7 +262,7 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
         )}
       </div>
 
-      {/* Lightbox Modal */} 
+      {/* Lightbox Modal */}
       {lightboxOpen && allImages.length > 0 && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" onClick={closeLightbox}>
           <div className="relative max-w-4xl max-h-full p-4">
@@ -339,7 +318,7 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
         </div>
       )}
 
-      {/* Modal de Compartilhamento */} 
+      {/* Modal de Compartilhamento */}
       {shareModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShareModalOpen(false)}>
           <div className="bg-white rounded-lg p-6 max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>

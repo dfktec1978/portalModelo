@@ -1,5 +1,5 @@
-﻿"use client";
-import React, { useEffect, useState } from "react";
+"use client";
+import React from "react";
 import { useProfile } from "@/lib/useProfile";
 
 type NewsDoc = {
@@ -12,30 +12,6 @@ type NewsDoc = {
   imageData?: string[];
   publishedAt?: any;
 };
-
-function SafeHtml({ html, className, style }: { html?: string; className?: string; style?: React.CSSProperties }) {
-  const [safe, setSafe] = useState<string>("");
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      const raw = html || "";
-      if (typeof window === "undefined") {
-        // server fallback: basic strip of script tags
-        const cleaned = raw.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "");
-        if (mounted) setSafe(cleaned);
-        return;
-      }
-      const mod = await import("isomorphic-dompurify");
-      const DOMPurify = (mod as any).default || mod;
-      if (mounted) setSafe(DOMPurify.sanitize(raw));
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [html]);
-
-  return <div className={className} style={style} dangerouslySetInnerHTML={{ __html: safe }} />;
-}
 
 export default function NewsRow({
   news,
@@ -69,10 +45,10 @@ export default function NewsRow({
 
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-[#CC2F30] leading-tight mb-1">{news.title}</h3>
-          <SafeHtml
-            html={news.summary || ''}
+          <div
             className="text-sm text-gray-700"
             style={{ display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+            dangerouslySetInnerHTML={{ __html: news.summary || '' }}
           />
           <div className="text-xs text-gray-400 mt-2">{news.source} • {news.publishedAt ? (news.publishedAt.seconds ? new Date(news.publishedAt.seconds * 1000).toLocaleString() : new Date(news.publishedAt).toLocaleString()) : '—'}</div>
         </div>

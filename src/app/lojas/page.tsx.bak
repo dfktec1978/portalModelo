@@ -8,14 +8,14 @@ export default function LojasPage() {
     {
       id: "dkworks",
       store_name: "DKWorks Studio",
-      description: "Criação de sites profissionais, marketing digital, consultoria empresarial em TI e treinamentos",
-      logo: "/img/logos/dkLogo.png",
+      description: "Estúdio de desenvolvimento e design - DKWorks",
+      logo: "/img/logos/dkTransparente.png",
       external_url: "https://dkworksstudio.base44.app/"
     },
     {
       id: "vitrine-segura",
       store_name: "Vitrine Segura",
-      description: "Achadinhos Úteis - Os melhores produtos do Mercado Livre hoje",
+      description: "Loja de vitrines online - Vitrine Segura",
       logo: "/img/logos/vitrineSegura.png",
       external_url: "https://vitrine-segura.vercel.app/"
     }
@@ -38,7 +38,7 @@ export default function LojasPage() {
           </p>
           <div className="mt-6">
             <Link href="/" className="inline-block bg-[#003049] hover:bg-[#002038] text-white px-6 py-3 rounded-lg font-semibold transition">
-              ← Voltar ao Início
+               Voltar ao Início
             </Link>
           </div>
         </div>
