@@ -3,3 +3,15 @@ COMIT DIÁRIOS:
 git add .
 git commit -m "Atualização --> Atualização Not, Class e Prof"
 git push
+
+git add -A
+git commit -m "força commit de todos os arquivos"
+git push origin main
+
+🧨 FORÇAR TUDO MESMO (RESET + COMMIT LIMPO)
+Use somente se estiver travado:
+git reset
+
+git add -A
+git commit -m "reset e commit completo"
+git push origin main --force
