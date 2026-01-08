@@ -3,7 +3,15 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { useProfile } from "@/lib/useProfile";
-import { listProfessionals, updateProfessionalFeatured, type Professional, createProfessional, adminDeleteProfessional, getProfessional, updateProfessional } from "@/lib/professionalQueries";
+import {
+  listProfessionals,
+  updateProfessionalFeatured,
+  type Professional,
+  createProfessional,
+  adminDeleteProfessional,
+  getProfessional,
+  updateProfessional,
+} from "@/lib/professionalQueries";
 import Link from "next/link";
 import { PROFESSIONAL_CATEGORIES, ALL_CATEGORIES } from "@/lib/professionalConstants";
 import ImageUploadNews from "@/components/ImageUploadNews";
@@ -180,10 +188,120 @@ export default function AdminProfissionaisClient() {
   return (
     <div className="p-4">
       <h1 className="text-2xl font-bold mb-4 text-white">Gerenciar Profissionais</h1>
-      <form onSubmit={handleSave} className="bg-white rounded shadow p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-4 text-[#003049]">Adicionar Novo Profissional</h2>
-        {/* ... restante do formulário e lista (mantive o mesmo markup do page.tsx original) */}
-        {/* Para manter a resposta curta, o markup completo já foi mantido no arquivo original; este client component replica todo o conteúdo funcional */}
+      <form onSubmit={handleSave} className="bg-white rounded shadow p-6 mb-6 space-y-4">
+        <h2 className="text-xl font-semibold mb-4 text-[#003049]">Adicionar / Editar Profissional</h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="form-label">Nome</label>
+            <input value={form.name} onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))} className="form-input" />
+          </div>
+
+          <div>
+            <label className="form-label">Categoria</label>
+            <select value={form.category} onChange={(e) => setForm((s) => ({ ...s, category: e.target.value }))} className="form-select">
+              <option value="">Selecione</option>
+              {ALL_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="form-label">Especialidade</label>
+            <input value={form.specialty} onChange={(e) => setForm((s) => ({ ...s, specialty: e.target.value }))} className="form-input" />
+          </div>
+
+          <div>
+            <label className="form-label">Cidade</label>
+            <input value={form.city} onChange={(e) => setForm((s) => ({ ...s, city: e.target.value }))} className="form-input" />
+          </div>
+
+          <div>
+            <label className="form-label">Bairro</label>
+            <input value={form.neighborhood} onChange={(e) => setForm((s) => ({ ...s, neighborhood: e.target.value }))} className="form-input" />
+          </div>
+
+          <div>
+            <label className="form-label">Telefone / WhatsApp</label>
+            <input value={form.phone} onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))} className="form-input" placeholder="(XX) XXXXX-XXXX" />
+          </div>
+
+          <div>
+            <label className="form-label">E-mail</label>
+            <input value={form.email} onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))} className="form-input" />
+          </div>
+
+          <div>
+            <label className="form-label">Site</label>
+            <input value={form.website} onChange={(e) => setForm((s) => ({ ...s, website: e.target.value }))} className="form-input" />
+          </div>
+
+          <div>
+            <label className="form-label">Instagram</label>
+            <input value={form.instagram} onChange={(e) => setForm((s) => ({ ...s, instagram: e.target.value }))} className="form-input" />
+          </div>
+
+          <div>
+            <label className="form-label">Facebook</label>
+            <input value={form.facebook} onChange={(e) => setForm((s) => ({ ...s, facebook: e.target.value }))} className="form-input" />
+          </div>
+
+          <div>
+            <label className="form-label">Horário de Atendimento</label>
+            <input value={form.working_hours} onChange={(e) => setForm((s) => ({ ...s, working_hours: e.target.value }))} className="form-input" />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <input id="emergency" type="checkbox" checked={form.emergency_service} onChange={(e) => setForm((s) => ({ ...s, emergency_service: e.target.checked }))} />
+            <label htmlFor="emergency" className="text-sm">Atendimento de emergência</label>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <input id="featured" type="checkbox" checked={form.featured} onChange={(e) => setForm((s) => ({ ...s, featured: e.target.checked }))} />
+            <label htmlFor="featured" className="text-sm">Destaque</label>
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="form-label">Descrição</label>
+            <Editor value={form.description} onChange={(val) => setForm((s) => ({ ...s, description: val }))} />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="form-label">Foto / Logo (1)</label>
+            <ImageUploadNews images={form.profile_images} heroImageIndex={0} onImagesChange={(imgs) => setForm((s) => ({ ...s, profile_images: imgs }))} onHeroImageChange={() => {}} maxImages={1} disabled={saving} />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="form-label">Galeria (até 5 imagens)</label>
+            <ImageUploadNews images={form.gallery_images} heroImageIndex={0} onImagesChange={(imgs) => setForm((s) => ({ ...s, gallery_images: imgs }))} onHeroImageChange={() => {}} maxImages={5} disabled={saving} />
+          </div>
+        </div>
+
+        <div className="flex gap-2 mt-4">
+          <button type="submit" disabled={saving} className="bg-blue-700 text-white px-4 py-2 rounded">{saving ? 'Salvando...' : 'Salvar'}</button>
+          <button type="button" onClick={() => {
+            setForm({
+              name: "",
+              category: "",
+              specialty: "",
+              city: "Modelo-SC",
+              neighborhood: "",
+              phone: "",
+              email: "",
+              description: "",
+              profile_images: [],
+              instagram: "",
+              facebook: "",
+              website: "",
+              working_hours: "",
+              emergency_service: false,
+              gallery_images: [],
+              featured: false,
+            });
+            setEditingId(null);
+          }} className="bg-gray-200 px-4 py-2 rounded">Limpar</button>
+        </div>
       </form>
 
       <div className="mb-4">

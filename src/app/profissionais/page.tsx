@@ -63,6 +63,7 @@ export default function ProfissionaisPage() {
   const totalPages = Math.ceil(professionals.length / itemsPerPage);
   const [selectedProfessional, setSelectedProfessional] = useState<Professional | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
+  const [galleryIndex, setGalleryIndex] = useState(0);
 
   async function openModal(id: string) {
     setModalLoading(true);
@@ -73,6 +74,7 @@ export default function ProfissionaisPage() {
         return;
       }
       setSelectedProfessional(data);
+      setGalleryIndex(0);
     } catch (e) {
       console.error(e);
     } finally {
@@ -82,6 +84,7 @@ export default function ProfissionaisPage() {
 
   function closeModal() {
     setSelectedProfessional(null);
+    setGalleryIndex(0);
   }
 
   return (
@@ -147,7 +150,7 @@ export default function ProfissionaisPage() {
       {selectedProfessional && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/50" onClick={closeModal} />
-          <div className="relative bg-white rounded-lg shadow-lg max-w-4xl w-full mx-4 overflow-auto max-h-[90vh]">
+          <div className="relative bg-white rounded-lg shadow-lg max-w-6xl w-full mx-4 overflow-auto max-h-[90vh]">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="text-xl font-semibold text-[#003049]">{selectedProfessional.name}</h3>
               <button onClick={closeModal} className="text-gray-600 px-3 py-1">
@@ -156,6 +159,7 @@ export default function ProfissionaisPage() {
             </div>
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Foto / Logo (col 1) */}
                 <div className="md:col-span-1">
                   {selectedProfessional.profile_image ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -164,7 +168,9 @@ export default function ProfissionaisPage() {
                     <div className="w-full h-40 bg-gray-100 rounded flex items-center justify-center">👤</div>
                   )}
                 </div>
-                <div className="md:col-span-2">
+
+                {/* Descrição / contatos (col 2) */}
+                <div className="md:col-span-1">
                   <p className="text-sm text-gray-600 mb-4">
                     {selectedProfessional.category} {selectedProfessional.specialty ? `• ${selectedProfessional.specialty}` : ""}
                   </p>
@@ -180,6 +186,31 @@ export default function ProfissionaisPage() {
                         Site
                       </a>
                     )}
+                  </div>
+                </div>
+
+                {/* Galeria (col 3) */}
+                <div className="md:col-span-1">
+                  <h4 className="text-sm font-semibold text-[#003049] mb-3">Trabalhos Realizados</h4>
+
+                  <div className="w-full mb-3">
+                    {selectedProfessional.gallery_images && selectedProfessional.gallery_images.length > 0 ? (
+                      // imagem em destaque
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={selectedProfessional.gallery_images[galleryIndex]} alt={`Imagem ${galleryIndex + 1}`} className="w-full h-48 object-cover rounded" />
+                    ) : (
+                      <div className="w-full h-48 bg-gray-100 rounded flex items-center justify-center text-gray-400">Sem imagens</div>
+                    )}
+                  </div>
+
+                  {/* Thumbnails (até 4) */}
+                  <div className="flex gap-3">
+                    {(selectedProfessional.gallery_images || []).slice(0, 4).map((img, idx) => (
+                      <button key={idx} onClick={() => setGalleryIndex(idx)} className="w-20 h-14 rounded overflow-hidden border-2" aria-label={`Ver imagem ${idx + 1}`}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={img} alt={`Miniatura ${idx + 1}`} className={`w-full h-full object-cover ${galleryIndex === idx ? "ring-2 ring-blue-400" : ""}`} />
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>

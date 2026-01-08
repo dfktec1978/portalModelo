@@ -25,7 +25,7 @@ export default function LojasPage() {
     }
   ];
 
-  // Filtros (para uso futuro/perfil dinâmico)
+  // Filtros (UI para uso futuro)
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("");
