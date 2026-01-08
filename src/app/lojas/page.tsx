@@ -39,7 +39,7 @@ export default function LojasPage() {
     return stores.filter((s) => {
       const q = query.trim().toLowerCase();
       if (q) {
-        const inName = (s.store_name || s.name || "").toLowerCase().includes(q);
+        const inName = (s.store_name || "").toLowerCase().includes(q);
         const inDesc = (s.description || "").toLowerCase().includes(q);
         if (!inName && !inDesc) return false;
       }
