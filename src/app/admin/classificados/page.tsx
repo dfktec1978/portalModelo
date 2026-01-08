@@ -1,7 +1,5 @@
 ﻿import { Suspense } from "react";
-import dynamic from "next/dynamic";
-
-const ClassificadosClient = dynamic(() => import("./ClassificadosClient"), { ssr: false });
+import ClassificadosClient from "./ClassificadosClient";
 
 export default function Page() {
   return (
