@@ -27,7 +27,7 @@ export default function StoreProductCard({ product }: { product: Product }) {
       </div>
       <div className="mt-3 flex items-center justify-between">
         <div className="text-lg font-bold text-green-700">{product.price}</div>
-        <Link href={/produto/} className="bg-green-700 text-white px-3 py-1 rounded text-sm">Comprar</Link>
+        <Link href={`/produtos/${product.id}`} className="bg-green-700 text-white px-3 py-1 rounded text-sm">Comprar</Link>
       </div>
     </div>
   );
