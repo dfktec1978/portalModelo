@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { listMyClassifieds, Classified } from "@/lib/classifiedQueries";
@@ -12,14 +12,7 @@ export default function MeusClassificadosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("todos");
-
-  useEffect(() => {
-    if (user) {
-      loadMyClassifieds();
-    }
-  }, [user]);
-
-  async function loadMyClassifieds() {
+  const loadMyClassifieds = useCallback(async () => {
     if (!user) return;
 
     setLoading(true);
@@ -36,11 +29,23 @@ export default function MeusClassificadosPage() {
       setClassifieds(filtered || []);
     }
     setLoading(false);
-  }
+  }, [user, statusFilter]);
 
   useEffect(() => {
-    loadMyClassifieds();
-  }, [statusFilter]);
+    if (user) {
+      const init = async () => {
+        await loadMyClassifieds();
+      };
+      init();
+    }
+  }, [user, loadMyClassifieds]);
+
+  useEffect(() => {
+    const init = async () => {
+      await loadMyClassifieds();
+    };
+    init();
+  }, [statusFilter, loadMyClassifieds]);
 
   if (authLoading) {
     return (

@@ -29,32 +29,41 @@ export default function EditarClassificadoPage() {
   });
 
   useEffect(() => {
-    loadClassified();
-  }, [id]);
+    let mounted = true;
+    const loadClassified = async () => {
+      const { data, error } = await getClassified(id);
 
-  async function loadClassified() {
-    const { data, error } = await getClassified(id);
-
-    if (error) {
-      setError(error.message);
-    } else if (data) {
-      // Verificar se é o owner
-      if (user && data.seller_id !== user.id) {
-        setError("Você não tem permissão para editar este classificado");
-      } else {
-        setClassified(data);
-        setImages(data.image_urls || []);
-        setFormData({
-          title: data.title,
-          description: data.description,
-          category: data.category || "",
-          location: data.location || "",
-          price: data.price ? data.price.toString() : "",
-        });
+      if (error) {
+        setError(error.message);
+      } else if (data) {
+        // Verificar se é o owner
+        if (user && data.seller_id !== user.id) {
+          setError("Você não tem permissão para editar este classificado");
+        } else {
+          setClassified(data);
+          setImages(data.image_urls || []);
+          setFormData({
+            title: data.title,
+            description: data.description,
+            category: data.category || "",
+            location: data.location || "",
+            price: data.price ? data.price.toString() : "",
+          });
+        }
       }
-    }
-    setLoading(false);
-  }
+      if (mounted) setLoading(false);
+    };
+
+    const init = async () => {
+      await loadClassified();
+    };
+    init();
+    return () => {
+      mounted = false;
+    };
+  }, [id, user]);
+
+  
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

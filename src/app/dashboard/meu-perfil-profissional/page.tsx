@@ -36,41 +36,42 @@ export default function MeuPerfilProfissionalPage() {
     }
 
     if (user && profile?.role === 'profissional') {
+      const loadProfessionalProfile = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('professionals')
+            .select('*')
+            .eq('profile_id', user?.id)
+            .single();
+
+          if (error && error.code !== 'PGRST116') {
+            console.error('Erro ao carregar perfil profissional:', error);
+            return;
+          }
+
+          if (data) {
+            setProfessional(data);
+          } else {
+            setProfessional({
+              id: '',
+              specialty: '',
+              bio: '',
+              image_url: '',
+              status: 'pending'
+            });
+          }
+        } catch (err) {
+          console.error('Erro ao carregar perfil profissional:', err);
+        } finally {
+          setLoadingProfessional(false);
+        }
+      };
+
       loadProfessionalProfile();
     }
   }, [user, loading, profile, router]);
 
-  const loadProfessionalProfile = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('professionals')
-        .select('*')
-        .eq('profile_id', user?.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') { // PGRST116 = not found
-        console.error('Erro ao carregar perfil profissional:', error);
-        return;
-      }
-
-      if (data) {
-        setProfessional(data);
-      } else {
-        // Criar perfil inicial se não existir
-        setProfessional({
-          id: '',
-          specialty: '',
-          bio: '',
-          image_url: '',
-          status: 'pending'
-        });
-      }
-    } catch (err) {
-      console.error('Erro ao carregar perfil profissional:', err);
-    } finally {
-      setLoadingProfessional(false);
-    }
-  };
+  
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

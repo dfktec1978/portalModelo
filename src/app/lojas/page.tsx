@@ -1,29 +1,38 @@
-﻿"use client";
+﻿"use client"; 
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import StoreCard from "@/components/StoreCard";
+import { subscribeToAdminStores, type StoreDoc } from "@/lib/adminQueries";
+import externalStores from "@/data/externalStores";
 
 export default function LojasPage() {
-  const stores = [
-    {
-      id: "dkworks",
-      store_name: "DKWorks Studio",
-      description: "Criação de sites profissionais, marketing digital, consultoria empresarial em TI e treinamentos",
-      logo: "/img/logos/dkLogo.png",
-      external_url: "https://dkworksstudio.base44.app/",
-      category: "Serviços",
-      location: "Modelo-SC"
-    },
-    {
-      id: "vitrine-segura",
-      store_name: "Vitrine Segura",
-      description: "Achadinhos Úteis - Os melhores produtos do Mercado Livre hoje",
-      logo: "/img/logos/vitrineSegura.png",
-      external_url: "https://vitrine-segura.vercel.app/",
-      category: "Produtos",
-      location: "Modelo-SC"
-    }
-  ];
+  const [stores, setStores] = useState<StoreDoc[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsub = subscribeToAdminStores((arr) => {
+      const internals = (arr || []).filter((s) => (s as any).status === 'approved');
+
+      // criar mapa por id para facilitar merge com externalStores
+      const map = new Map<string, any>();
+      internals.forEach((s: any) => map.set(String(s.id), { ...s, _internal: true }));
+
+      // adicionar ou mesclar lojas externas configuradas via código
+      (externalStores || []).forEach((es: any) => {
+        const existing = map.get(es.id);
+        if (existing) {
+          // mesclar: preferir dados internos, mas garantir external_url
+          map.set(es.id, { ...es, ...existing, external_url: existing.external_url || es.external_url });
+        } else {
+          map.set(es.id, { ...es, _externalOnly: true });
+        }
+      });
+
+      setStores(Array.from(map.values()));
+      setLoading(false);
+    });
+    return () => { if (typeof unsub === 'function') unsub(); };
+  }, []);
 
   // Filtros (UI para uso futuro)
   const [query, setQuery] = useState("");
@@ -31,20 +40,20 @@ export default function LojasPage() {
   const [location, setLocation] = useState("");
 
   const categories = useMemo(() => {
-    const setc = new Set(stores.map(s => s.category).filter(Boolean));
+    const setc = new Set(stores.map((s: any) => (s as any).category).filter(Boolean));
     return Array.from(setc);
-  }, []);
+  }, [stores]);
 
   const filtered = useMemo(() => {
-    return stores.filter((s) => {
+    return (stores || []).filter((s: any) => {
       const q = query.trim().toLowerCase();
       if (q) {
-        const inName = (s.store_name || "").toLowerCase().includes(q);
-        const inDesc = (s.description || "").toLowerCase().includes(q);
+        const inName = ((s as any).storeName || (s as any).store_name || "").toLowerCase().includes(q);
+        const inDesc = ((s as any).description || "").toLowerCase().includes(q);
         if (!inName && !inDesc) return false;
       }
-      if (category && s.category !== category) return false;
-      if (location && s.location && !s.location.toLowerCase().includes(location.toLowerCase())) return false;
+      if (category && (s as any).category !== category) return false;
+      if (location && (s as any).city && !( (s as any).city || "").toLowerCase().includes(location.toLowerCase())) return false;
       return true;
     });
   }, [stores, query, category, location]);
@@ -107,8 +116,21 @@ export default function LojasPage() {
 
         {/* Grid de lojas */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((s) => (
-            <StoreCard key={s.id} store={s} />
+          {filtered.map((s: any) => (
+            <div key={s.id}>
+              <StoreCard
+                store={{
+                  id: s.id,
+                  store_name: s.storeName || s.store_name || s.name,
+                  name: s.name,
+                  slug: (s as any).slug,
+                  description: s.description,
+                  logo: s.logo || s.logo_url || (s as any).image,
+                  external_url: (s as any).external_url,
+                }}
+                internalHref={!s._externalOnly ? `/lojas/${s.slug || s.id}` : undefined}
+              />
+            </div>
           ))}
         </div>
       </div>

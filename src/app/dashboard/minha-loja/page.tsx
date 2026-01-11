@@ -6,7 +6,7 @@ import Link from "next/link";
 
 export default function MinhaLojaPage() {
   const { user } = useAuth();
-  const [store, setStore] = useState<any>(null);
+  const [stores, setStores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -20,9 +20,9 @@ export default function MinhaLojaPage() {
           .eq("owner_id", user.id)
           .order("created_at", { ascending: false });
         if (!mounted) return;
-        setStore(data && (data as any)[0]);
+        setStores((data as any) || []);
       } catch (e) {
-        console.error("Erro ao carregar loja:", e);
+        console.error("Erro ao carregar lojas:", e);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -34,24 +34,27 @@ export default function MinhaLojaPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">Minha Loja</h1>
+      <h1 className="text-2xl font-bold mb-4">Minhas Lojas</h1>
 
-      {!store ? (
+      {stores.length === 0 ? (
         <div className="p-4 bg-white/5 rounded">
           <p className="text-gray-400">Nenhuma loja encontrada para sua conta.</p>
-          <Link href="/lojas/nova" className="mt-3 inline-block bg-[#FDC500] px-3 py-2 rounded">Cadastrar loja</Link>
+          <Link href="/lojas/criar" className="mt-3 inline-block bg-[#FDC500] px-3 py-2 rounded">Cadastrar loja</Link>
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="p-4 bg-white/5 rounded">
-            <div className="font-semibold text-lg">{store.store_name || store.name || 'Sem nome'}</div>
-            <div className="text-sm text-gray-400">Status: {store.status || '—'}</div>
-            <div className="mt-2">{store.description}</div>
-            <div className="mt-4 flex gap-2">
-              <Link href={`/dashboard/produtos`} className="px-3 py-2 bg-white/10 rounded">Gerenciar Produtos</Link>
-              <Link href={`/lojas/${store.id}/editar`} className="px-3 py-2 bg-white/10 rounded">Editar Loja</Link>
+          {stores.map((s) => (
+            <div key={s.id} className="p-4 bg-white/5 rounded">
+              <div className="font-semibold text-lg">{s.store_name || s.name || 'Sem nome'}</div>
+              <div className="text-sm text-gray-400">Status: {s.status || '—'}</div>
+              <div className="mt-2">{s.description}</div>
+              <div className="mt-4 flex gap-2">
+                <Link href={`/dashboard/produtos?store=${s.id}`} className="px-3 py-2 bg-white/10 rounded">Gerenciar Produtos</Link>
+                <Link href={`/dashboard/lojas/${s.slug || s.id}/editar`} className="px-3 py-2 bg-white/10 rounded">Editar Loja</Link>
+                <a href={`/lojas/${s.slug || s.id}`} target="_blank" rel="noreferrer" className="px-3 py-2 bg-blue-600 text-white rounded">Visualizar página</a>
+              </div>
             </div>
-          </div>
+          ))}
         </div>
       )}
     </div>

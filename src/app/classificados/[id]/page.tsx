@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { getClassified, Classified } from "@/lib/classifiedQueries";
+import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
 import DeleteClassifiedButton from "@/components/DeleteClassifiedButton";
 
@@ -20,18 +21,45 @@ export default function ClassifiedDetailPage() {
   const [selectedImage, setSelectedImage] = useState(0);
 
   useEffect(() => {
-    loadClassified();
+    if (!id) return;
+    let mounted = true;
+    const init = async () => {
+      const { data, error } = await getClassified(id);
+      if (error) {
+        if (mounted) setError(error.message);
+      } else {
+        if (mounted) setClassified(data);
+      }
+      if (mounted) setLoading(false);
+    };
+    init();
+    return () => { mounted = false; };
   }, [id]);
 
-  async function loadClassified() {
-    const { data, error } = await getClassified(id);
-    if (error) {
-      setError(error.message);
-    } else {
-      setClassified(data);
-    }
-    setLoading(false);
-  }
+  // Load seller profile (email, phone) to enable contact buttons
+  const [sellerProfile, setSellerProfile] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (!classified?.seller_id) return;
+    let mounted = true;
+    const loadSeller = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id,display_name,email,phone")
+          .eq("id", classified.seller_id)
+          .maybeSingle();
+
+        if (!error && mounted) {
+          setSellerProfile(data || null);
+        }
+      } catch (err) {
+        if (mounted) setSellerProfile(null);
+      }
+    };
+    loadSeller();
+    return () => { mounted = false; };
+  }, [classified?.seller_id]);
 
   if (loading) {
     return (
@@ -163,10 +191,34 @@ export default function ClassifiedDetailPage() {
               {/* Contact Section */}
               {!isOwner && (
                 <div>
-                  <button className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition mb-3">
+                  <button
+                    onClick={() => {
+                      const email = sellerProfile?.email;
+                      if (email) {
+                        window.location.href = `mailto:${email}`;
+                      } else {
+                        alert("Email do anunciante não disponível.");
+                      }
+                    }}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition mb-3"
+                  >
                     Entre em contato
                   </button>
-                  <button className="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition">
+
+                  <button
+                    onClick={() => {
+                      const raw = sellerProfile?.phone || "";
+                      const digits = raw.replace(/\D/g, "");
+                      if (digits.length === 0) {
+                        alert("Telefone do anunciante não disponível.");
+                        return;
+                      }
+                      const text = encodeURIComponent(`Olá, vi seu anúncio "${classified.title}" e tenho interesse.`);
+                      const waUrl = `https://wa.me/${digits}?text=${text}`;
+                      window.open(waUrl, "_blank");
+                    }}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition"
+                  >
                     Conversar via WhatsApp
                   </button>
                 </div>

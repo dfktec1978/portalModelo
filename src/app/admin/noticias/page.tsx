@@ -1,5 +1,6 @@
-﻿"use client";
+"use client";
 import { useEffect, useState, Suspense } from "react";
+import Image from "next/image";
 import { useAuth } from "@/lib/AuthContext";
 import { useProfile } from "@/lib/useProfile";
 import { useSearchParams } from "next/navigation";
@@ -63,8 +64,8 @@ function AdminNoticiasContent() {
         setEditingId(id);
       }
     } catch (error) {
-      console.error("Erro ao carregar notícia para edição:", error);
-      alert("Erro ao carregar notícia para edição");
+      console.error("Erro ao carregar not�cia para edi��o:", error);
+      alert("Erro ao carregar not�cia para edi��o");
     }
   }
 
@@ -74,7 +75,7 @@ function AdminNoticiasContent() {
     return (
       <div className="p-8">
         <h1 className="text-2xl font-bold mb-4">Acesso negado</h1>
-        <p>Somente administradores podem acessar esta área.</p>
+        <p>Somente administradores podem acessar esta �rea.</p>
       </div>
     );
   }
@@ -107,14 +108,14 @@ function AdminNoticiasContent() {
       console.log('Payload preparado:', payload);
 
       if (editingId) {
-        console.log('Atualizando notícia existente:', editingId);
+        console.log('Atualizando not�cia existente:', editingId);
         await updateNews(editingId, payload);
-        alert('Notícia atualizada com sucesso');
+        alert('Not�cia atualizada com sucesso');
         resetForm();
       } else {
-        console.log('Criando nova notícia');
+        console.log('Criando nova not�cia');
         await createNews(payload, user?.id || 'anon');
-        alert('Notícia publicada com sucesso');
+        alert('Not�cia publicada com sucesso');
         resetForm();
       }
     } catch (error: any) {
@@ -126,11 +127,11 @@ function AdminNoticiasContent() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Tem certeza que deseja excluir esta notícia?")) return;
+    if (!confirm("Tem certeza que deseja excluir esta not�cia?")) return;
 
     try {
       await deleteNews(id);
-      alert('Notícia excluída com sucesso');
+      alert('Not�cia exclu�da com sucesso');
     } catch (error: any) {
       console.error('Erro ao excluir:', error);
       alert('Erro ao excluir: ' + error.message);
@@ -140,13 +141,13 @@ function AdminNoticiasContent() {
   return (
     <div className="p-8">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Gerenciar Notícias</h1>
+        <h1 className="text-3xl font-bold mb-8">Gerenciar Not�cias</h1>
 
         <form onSubmit={handleSave} className="bg-white rounded shadow p-6 mb-6">
           <div className="grid grid-cols-1 gap-4">
             <div>
-              <label className="form-label">Título</label>
-              <input placeholder="Título" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="form-input" />
+              <label className="form-label">T�tulo</label>
+              <input placeholder="T�tulo" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="form-input" />
             </div>
             <div>
               <label className="form-label">Fonte</label>
@@ -158,7 +159,7 @@ function AdminNoticiasContent() {
             </div>
 
             <div>
-              <label className="form-label">Imagens (máx 5)</label>
+              <label className="form-label">Imagens (m�x 5)</label>
               <ImageUploadNews
                 images={form.imageUrls}
                 heroImageIndex={form.heroImageIndex}
@@ -170,11 +171,11 @@ function AdminNoticiasContent() {
             </div>
 
             <div>
-              <label className="form-label">Resumo / conteúdo</label>
+              <label className="form-label">Resumo / conte�do</label>
               <Editor
                 value={form.summary}
                 onChange={(value) => setForm({ ...form, summary: value })}
-                placeholder="Digite o resumo/conteúdo da notícia..."
+                placeholder="Digite o resumo/conte�do da not�cia..."
               />
             </div>
 
@@ -186,7 +187,7 @@ function AdminNoticiasContent() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (confirm("Tem certeza que deseja excluir esta notícia?")) {
+                    if (confirm("Tem certeza que deseja excluir esta not�cia?")) {
                       handleDelete(editingId);
                     }
                   }}
@@ -204,13 +205,17 @@ function AdminNoticiasContent() {
             <div key={n.id} className="bg-white rounded shadow p-4 flex justify-between items-start">
               <div className="flex gap-4">
                 {n.imageUrls && n.imageUrls[0] ? (
-                  <img src={n.imageUrls[0]} alt="thumb" className="w-28 h-20 object-cover rounded" style={{ width: 'auto' }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  <div className="w-28 h-20 overflow-hidden rounded">
+                    <Image src={n.imageUrls[0]} alt="thumb" width={112} height={80} className="object-cover w-full h-full" unoptimized onError={() => { /* ignore */ }} />
+                  </div>
                 ) : n.imageData && n.imageData[0] ? (
-                  <img src={n.imageData[0]} alt="thumb" className="w-28 h-20 object-cover rounded" style={{ width: 'auto' }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  <div className="w-28 h-20 overflow-hidden rounded">
+                    <Image src={n.imageData[0]} alt="thumb" width={112} height={80} className="object-cover w-full h-full" unoptimized onError={() => { /* ignore */ }} />
+                  </div>
                 ) : null}
                 <div>
                   <h3 className="text-lg font-semibold">{n.title}</h3>
-                  <p className="text-sm text-gray-600">{n.source} • {n.publishedAt ? (n.publishedAt.seconds ? new Date(n.publishedAt.seconds * 1000).toLocaleString() : new Date(n.publishedAt).toLocaleString()) : '—'}</p>
+                  <p className="text-sm text-gray-600">{n.source} � {n.publishedAt ? (n.publishedAt.seconds ? new Date(n.publishedAt.seconds * 1000).toLocaleString() : new Date(n.publishedAt).toLocaleString()) : '�'}</p>
                   <p className="text-sm text-gray-500 mt-1">{n.summary?.slice(0, 100)}...</p>
                 </div>
               </div>
@@ -218,7 +223,7 @@ function AdminNoticiasContent() {
                 <a href={`/noticias/${n.id}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-sm">Ver</a>
                 <button onClick={() => window.location.href = `?edit=${n.id}`} className="text-green-600 hover:text-green-800 text-sm">Editar</button>
                 <button onClick={() => {
-                  if (confirm("Tem certeza que deseja excluir esta notícia?")) {
+                  if (confirm("Tem certeza que deseja excluir esta not�cia?")) {
                     handleDelete(n.id);
                   }
                 }} className="text-red-600 hover:text-red-800 text-sm">Excluir</button>
@@ -238,3 +243,4 @@ export default function AdminNoticiasPage() {
     </Suspense>
   );
 }
+

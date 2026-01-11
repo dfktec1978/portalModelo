@@ -14,22 +14,22 @@ export default function ProfessionalDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (id) {
-      loadProfessional();
-    }
+    if (!id) return;
+    let mounted = true;
+    const init = async () => {
+      setLoading(true);
+      const { data, error } = await getProfessional(id);
+      if (error) {
+        if (mounted) setError('Profissional não encontrado');
+        console.error('Erro ao carregar profissional:', error);
+      } else {
+        if (mounted) setProfessional(data);
+      }
+      if (mounted) setLoading(false);
+    };
+    init();
+    return () => { mounted = false; };
   }, [id]);
-
-  const loadProfessional = async () => {
-    setLoading(true);
-    const { data, error } = await getProfessional(id);
-    if (error) {
-      setError('Profissional não encontrado');
-      console.error('Erro ao carregar profissional:', error);
-    } else {
-      setProfessional(data);
-    }
-    setLoading(false);
-  };
 
   if (loading) {
     return (

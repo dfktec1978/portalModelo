@@ -14,22 +14,33 @@ export default function NoticiasPublicPage() {
 
   useEffect(() => {
     // Subscribe to news (dual-mode: Firestore ou Supabase)
-    try {
-      const unsub = subscribeToNews(
-        (news) => {
-          setNews(news);
-          setLoading(false);
-        },
-        (err) => {
-          console.error("Erro ao carregar notícias:", err);
-          setLoading(false);
-        }
-      );
-      return () => unsub();
-    } catch (e) {
-      console.error("Erro ao iniciar listener de notícias", e);
-      setLoading(false);
-    }
+    let mounted = true;
+    const init = () => {
+      try {
+        const unsub = subscribeToNews(
+          (news) => {
+            if (!mounted) return;
+            setNews(news);
+            setLoading(false);
+          },
+          (err) => {
+            console.error("Erro ao carregar notícias:", err);
+            if (mounted) setLoading(false);
+          }
+        );
+        return unsub;
+      } catch (e) {
+        console.error("Erro ao iniciar listener de notícias", e);
+        if (mounted) setLoading(false);
+        return () => {};
+      }
+    };
+
+    const unsub = init();
+    return () => {
+      mounted = false;
+      try { if (typeof unsub === 'function') unsub(); } catch {}
+    };
   }, []);
 
   function openNews(id: string) {

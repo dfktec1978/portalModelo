@@ -6,10 +6,13 @@ export default function Footer() {
 
   useEffect(() => {
     // Simular contador de visitas (em produção, isso viria de uma API)
-    const count = localStorage.getItem('visitCount');
-    const newCount = count ? parseInt(count) + 1 : 1;
-    localStorage.setItem('visitCount', newCount.toString());
-    setVisitCount(newCount);
+    const init = () => {
+      const count = localStorage.getItem('visitCount');
+      const newCount = count ? parseInt(count) + 1 : 1;
+      localStorage.setItem('visitCount', newCount.toString());
+      setVisitCount(newCount);
+    };
+    init();
   }, []);
 
   return (

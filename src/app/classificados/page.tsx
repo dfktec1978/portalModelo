@@ -48,6 +48,18 @@ export default function ClassifiedsPage() {
     { value: "outros", label: "Outros" },
   ];
 
+  // Limpa HTML/entidades e retorna texto simples
+  function cleanText(input?: string) {
+    if (!input) return "";
+    // remover tags HTML
+    let t = input.replace(/<[^>]*>/g, "");
+    // decode entidades HTML comuns
+    t = t.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+    // colapsar espaços e trim
+    t = t.replace(/\s+/g, " ").trim();
+    return t;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 py-8">
@@ -163,7 +175,7 @@ export default function ClassifiedsPage() {
                     </h3>
 
                     <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                      {classified.description}
+                      {cleanText(classified.description)}
                     </p>
 
                     <div className="flex justify-between items-end">
