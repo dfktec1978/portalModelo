@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 // Rota server-side para incrementar e retornar contador global de visitas.
@@ -14,9 +14,12 @@ if (!supabaseUrl || !serviceRoleKey) {
 
 const sb = createClient(supabaseUrl, serviceRoleKey);
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
-    // Try to read current value
+    // If client already has 'visited' cookie, do not increment again (prevents counting F5)
+    const already = req.cookies.get('visited')?.value;
+
+    // Read current value
     const { data: rows, error: selectError } = await sb.from('site_visits').select('id,count').eq('id', 'global').limit(1).maybeSingle();
 
     if (selectError) {
@@ -24,14 +27,22 @@ export async function POST() {
       return NextResponse.json({ error: 'Erro ao ler contador' }, { status: 500 });
     }
 
+    // If cookie present, just return current count without increment
+    if (already) {
+      const current = rows?.count ?? null;
+      return NextResponse.json({ count: current });
+    }
+
     if (!rows) {
-      // initialize
+      // initialize with 651 so first visitor after migration counts as 651
       const { data: inserted, error: insErr } = await sb.from('site_visits').insert({ id: 'global', count: 651 }).select().single();
       if (insErr) {
         console.error('insert error', insErr);
         return NextResponse.json({ error: 'Erro ao inicializar contador' }, { status: 500 });
       }
-      return NextResponse.json({ count: inserted.count });
+      const res = NextResponse.json({ count: inserted.count });
+      res.cookies.set('visited', '1', { maxAge: 60 * 60 * 24, path: '/' });
+      return res;
     }
 
     const newCount = Number(rows.count || 0) + 1;
@@ -42,18 +53,23 @@ export async function POST() {
       return NextResponse.json({ error: 'Erro ao atualizar contador' }, { status: 500 });
     }
 
-    return NextResponse.json({ count: updated.count });
+    const res = NextResponse.json({ count: updated.count });
+    // Set cookie to avoid recounting for 24h
+    res.cookies.set('visited', '1', { maxAge: 60 * 60 * 24, path: '/' });
+    return res;
   } catch (err) {
     console.error('unexpected', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const { data: row, error } = await sb.from('site_visits').select('count').eq('id', 'global').maybeSingle();
     if (error) return NextResponse.json({ error: 'Erro ao ler contador' }, { status: 500 });
-    return NextResponse.json({ count: row?.count ?? null });
+    // Optionally include whether this client has visited (cookie)
+    const visited = req.cookies.get('visited')?.value ? true : false;
+    return NextResponse.json({ count: row?.count ?? null, visited });
   } catch (err) {
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
