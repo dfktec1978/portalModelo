@@ -114,11 +114,11 @@ export default function DashboardProdutosPage() {
           <p className="text-gray-400 text-sm">Produtos</p>
         </div>
         <div className="bg-white/10 border border-white/20 rounded-lg p-4">
-          <p className="text-2xl font-bold text-green-400">{store ? 1 : 0}</p>
+          <p className="text-2xl font-bold text-green-400">{selectedStoreId ? 1 : 0}</p>
           <p className="text-gray-400 text-sm">Loja ativa</p>
         </div>
         <div className="bg-white/10 border border-white/20 rounded-lg p-4">
-          <p className="text-2xl font-bold text-blue-400">{store ? (products.length) : 0}</p>
+          <p className="text-2xl font-bold text-blue-400">{selectedStoreId ? products.length : 0}</p>
           <p className="text-gray-400 text-sm">Itens cadastrados</p>
         </div>
       </div>
@@ -128,7 +128,7 @@ export default function DashboardProdutosPage() {
         <Link href="/dashboard/produtos/novo" className="px-3 py-2 bg-green-600 text-white rounded">Novo Produto</Link>
       </div>
 
-      {!store ? (
+      {!selectedStoreId ? (
         <div className="p-4 bg-white/5 rounded">Nenhuma loja encontrada para sua conta. Crie uma loja primeiro.</div>
       ) : (
         <div className="grid grid-cols-1 gap-3">
