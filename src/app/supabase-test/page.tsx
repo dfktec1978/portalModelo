@@ -14,13 +14,15 @@ export default function SupabaseTestPage() {
 
   useEffect(() => {
     // Detectar variáveis de ambiente no cliente
-    const hasUrl = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const hasKey = !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    const urlValue = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-    const keyValue = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-    const keyPreview = keyValue ? `${keyValue.substring(0, 20)}...${keyValue.substring(keyValue.length - 10)}` : "";
-
-    setEnvStatus({ hasUrl, hasKey, urlValue, keyPreview });
+    const init = () => {
+      const hasUrl = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const hasKey = !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      const urlValue = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+      const keyValue = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+      const keyPreview = keyValue ? `${keyValue.substring(0, 20)}...${keyValue.substring(keyValue.length - 10)}` : "";
+      setEnvStatus({ hasUrl, hasKey, urlValue, keyPreview });
+    };
+    init();
   }, []);
 
   return (

@@ -20,15 +20,29 @@ export default function ProductForm({ initial, onSaved }: Props) {
   );
   const [description, setDescription] = useState(initial?.description || "");
   // support alternative column names from DB (name/nome)
+  // Normalize images: accept array or JSON-string from DB
+  const parseImages = (val: any) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    try {
+      const parsed = typeof val === 'string' ? JSON.parse(val) : val;
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  };
+
+  const [images, setImages] = useState<string[]>(parseImages(initial?.images));
+
   React.useEffect(() => {
     if (!initial) return;
     if (initial.title === undefined && initial.name) setTitle(initial.name);
     if (initial.title === undefined && initial.nome) setTitle(initial.nome);
     if (initial.description === undefined && initial.desc) setDescription(initial.desc);
     if (initial.price === undefined && initial.preco) setPrice(initial.preco);
+    // normalize images if present
+    if (initial.images !== undefined) setImages(parseImages(initial.images));
   }, [initial]);
-  // images are stored as public URLs (already uploaded via uploadFn)
-  const [images, setImages] = useState<string[]>(initial?.images || []);
   const [heroIndex, setHeroIndex] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

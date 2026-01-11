@@ -2,14 +2,28 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 
 export default function Footer() {
-  const [visitCount, setVisitCount] = useState<number>(0);
+  const [visitCount, setVisitCount] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simular contador de visitas (em produção, isso viria de uma API)
-    const count = localStorage.getItem('visitCount');
-    const newCount = count ? parseInt(count) + 1 : 1;
-    localStorage.setItem('visitCount', newCount.toString());
-    setVisitCount(newCount);
+    let mounted = true;
+
+    async function registerVisit() {
+      try {
+        const res = await fetch('/api/visitas', { method: 'POST' });
+        const json = await res.json();
+        if (!mounted) return;
+        if (json?.count !== undefined) setVisitCount(Number(json.count));
+      } catch (err) {
+        console.error('Erro ao registrar visita', err);
+        // fallback: keep null
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    registerVisit();
+    return () => { mounted = false; };
   }, []);
 
   return (
@@ -26,7 +40,7 @@ export default function Footer() {
           © {new Date().getFullYear()} Portal Modelo — Todos os direitos reservados à DK Works Studio.
         </p>
         <p className="text-white/60 text-xs text-center">
-          Visitas: {visitCount.toLocaleString()}
+          Visitas: {loading ? '...' : visitCount !== null ? visitCount.toLocaleString() : '—'}
         </p>
       </div>
     </footer>

@@ -12,20 +12,27 @@ export default function StoreEmbed({ url, height = 700 }: StoreEmbedProps) {
   if (!url) {
     return <div className="text-sm text-gray-500">URL inválida.</div>;
   }
-
   let safeUrl = url;
+  let invalidReason: "invalid" | "protocol" | null = null;
   try {
     const u = new URL(url);
     // permitir apenas https para segurança
-    if (u.protocol !== "https:") return (
+    if (u.protocol !== "https:") invalidReason = "protocol";
+    else safeUrl = u.toString();
+  } catch (e) {
+    invalidReason = "invalid";
+  }
+
+  if (invalidReason === "invalid") {
+    return <div className="text-sm text-gray-500">URL inválida.</div>;
+  }
+  if (invalidReason === "protocol") {
+    return (
       <div className="text-sm text-gray-500">
         Link não permitido. <a href={url} target="_blank" rel="noopener noreferrer" className="underline">Abrir em nova aba</a>
       </div>
     );
-  } catch {
-    return <div className="text-sm text-gray-500">URL inválida.</div>;
   }
-
   return (
     <div className="w-full">
       <div className="border rounded overflow-hidden">

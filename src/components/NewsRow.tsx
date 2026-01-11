@@ -1,5 +1,6 @@
-﻿"use client";
+"use client";
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import { useProfile } from "@/lib/useProfile";
 
 type NewsDoc = {
@@ -20,7 +21,6 @@ function SafeHtml({ html, className, style }: { html?: string; className?: strin
     (async () => {
       const raw = html || "";
       if (typeof window === "undefined") {
-        // server fallback: basic strip of script tags
         const cleaned = raw.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "");
         if (mounted) setSafe(cleaned);
         return;
@@ -61,7 +61,15 @@ export default function NewsRow({
       >
         {imgSrc ? (
           <div className="w-28 h-20 flex-shrink-0 overflow-hidden rounded-md bg-gray-100">
-            <img src={imgSrc} alt={news.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+            <Image
+              src={imgSrc as string}
+              alt={news.title}
+              width={112}
+              height={80}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+              unoptimized
+              onError={() => { /* hide broken images */ }}
+            />
           </div>
         ) : (
           <div className="w-28 h-20 flex-shrink-0 rounded-md bg-gray-100 flex items-center justify-center text-sm text-gray-500">Sem imagem</div>
@@ -109,3 +117,5 @@ export default function NewsRow({
     </div>
   );
 }
+ 
+

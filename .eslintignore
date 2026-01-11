@@ -1,0 +1,16 @@
+/.next
+node_modules
+dist
+out
+build
+.turbo
+.vercel
+coverage
+.eslintcache
+public/build# Ignore build and dependency folders
+node_modules/
+.next/
+dist/
+coverage/
+.vscode/
+.eslintcache

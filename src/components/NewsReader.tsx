@@ -1,6 +1,7 @@
 ﻿"use client";
 import React, { useEffect, useState, useMemo } from "react";
 import { fetchNewsById, fetchNewsSuggestions, NewsDoc } from "@/lib/newsQueries";
+import Image from "next/image";
 
 function SafeHtml({ html, className }: { html?: string; className?: string }) {
   const [safe, setSafe] = useState<string>("");
@@ -207,11 +208,13 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
           {/* Imagem Hero (Capa) */}
           {heroImage && (
             <div className="w-full h-80 mb-4 rounded-lg overflow-hidden cursor-pointer bg-gray-100 flex items-center justify-center" onClick={() => openLightbox(heroImageIndex)}>
-              <img
+              <Image
                 src={heroImage}
                 alt={`${news.title} - Imagem principal`}
-                className="max-w-full max-h-full object-contain"
-                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                fill
+                className="object-contain"
+                unoptimized
+                onError={() => { /* ignore */ }}
               />
             </div>
           )}
@@ -225,11 +228,12 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
                 return (
                   <div key={idx} className="relative group">
                     <div className="h-20 rounded-lg overflow-hidden cursor-pointer" onClick={() => openLightbox(realIndex)}>
-                      <img
+                      <Image
                         src={imgSrc}
                         alt={`${news.title} - Imagem ${realIndex + 1}`}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform"
-                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        fill
+                        className="object-cover hover:scale-105 transition-transform"
+                        unoptimized
                       />
                     </div>
                     {/* Botão para definir como principal */}
@@ -309,12 +313,16 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
             )}
 
             {/* Imagem principal */}
-            <img
-              src={allImages[currentImageIndex]}
-              alt={`${news.title} - Imagem ${currentImageIndex + 1}`}
-              className="max-w-full max-h-[80vh] object-contain"
-              onClick={(e) => e.stopPropagation()}
-            />
+            <div className="max-w-full max-h-[80vh]">
+              <Image
+                src={allImages[currentImageIndex]}
+                alt={`${news.title} - Imagem ${currentImageIndex + 1}`}
+                fill
+                className="object-contain"
+                unoptimized
+                onClick={(e:any) => e.stopPropagation()}
+              />
+            </div>
 
             {/* Navegação próxima */}
             {allImages.length > 1 && (

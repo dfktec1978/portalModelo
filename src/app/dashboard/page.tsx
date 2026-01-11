@@ -28,30 +28,32 @@ export default function DashboardPage() {
     }
 
     if (user) {
+      const loadProfile = async () => {
+        try {
+          const { data, error } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user?.id)
+            .single();
+
+          if (error) {
+            console.error("Erro ao carregar perfil:", error);
+            return;
+          }
+
+          setProfile(data);
+        } catch (err) {
+          console.error("Erro ao carregar perfil:", err);
+        } finally {
+          setLoadingProfile(false);
+        }
+      };
+
       loadProfile();
     }
   }, [user, loading, router]);
 
-  async function loadProfile() {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user?.id)
-        .single();
-
-      if (error) {
-        console.error("Erro ao carregar perfil:", error);
-        return;
-      }
-
-      setProfile(data);
-    } catch (err) {
-      console.error("Erro ao carregar perfil:", err);
-    } finally {
-      setLoadingProfile(false);
-    }
-  }
+  
 
   async function handleSignOut() {
     const { error } = await signOut();

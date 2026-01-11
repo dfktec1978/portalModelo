@@ -13,6 +13,7 @@ import {
   orderBy,
   onSnapshot,
   doc,
+  setDoc,
   updateDoc,
   deleteDoc,
   Timestamp,
@@ -401,5 +402,53 @@ export async function updateStoreStatus(
       ]);
 
     if (auditError) console.warn('Erro ao registrar audit log:', auditError);
+  }
+}
+
+/**
+ * Update arbitrary store fields (admin)
+ */
+export async function updateStore(storeId: string, data: Partial<StoreDoc>) {
+  if (!HAS_SUPABASE) {
+    const storeRef = doc(db, 'stores', storeId);
+    return updateDoc(storeRef, data as any);
+  } else {
+    const updateData: any = {};
+    if (data.storeName !== undefined) updateData.store_name = data.storeName;
+    if ((data as any).store_name !== undefined) updateData.store_name = (data as any).store_name;
+    if ((data as any).description !== undefined) updateData.description = (data as any).description;
+    if ((data as any).external_url !== undefined) updateData.external_url = (data as any).external_url;
+    if ((data as any).logo !== undefined) updateData.logo = (data as any).logo;
+    if ((data as any).slug !== undefined) updateData.slug = (data as any).slug;
+
+    const { error } = await supabase!.from('stores').update(updateData).eq('id', storeId);
+    if (error) throw error;
+    return true;
+  }
+}
+
+/**
+ * Create store with specific id (admin)
+ */
+export async function createStore(storeId: string, data: Partial<StoreDoc>) {
+  if (!HAS_SUPABASE) {
+    // Firebase: create or overwrite document with given id
+    const storeRef = doc(db, 'stores', storeId);
+    await setDoc(storeRef, { ...(data as any), createdAt: serverTimestamp() });
+    return { id: storeId };
+  } else {
+    const insertData: any = {
+      id: storeId,
+      store_name: (data as any).storeName || (data as any).store_name || null,
+      slug: (data as any).slug || null,
+      description: (data as any).description || null,
+      external_url: (data as any).external_url || null,
+      logo: (data as any).logo || null,
+      status: (data as any).status || 'approved',
+      owner_id: (data as any).ownerUid || null,
+    };
+    const { data: result, error } = await supabase!.from('stores').insert([insertData]).select();
+    if (error) throw error;
+    return result?.[0];
   }
 }

@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import ImageUploadNews from "@/components/ImageUploadNews";
@@ -37,81 +37,7 @@ export default function EditarPerfilPage() {
     facebook: "",
   });
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/login");
-      return;
-    }
-
-    if (user) {
-      loadProfile();
-    }
-  }, [user, authLoading, router]);
-
-  async function loadProfile() {
-    try {
-      setLoading(true);
-      // Query básica primeiro para verificar se o perfil existe
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, email, display_name, phone, role, status")
-        .eq("id", user?.id)
-        .single();
-
-      if (error) {
-        console.error("Erro ao carregar perfil:", error);
-        if (error.code === 'PGRST116') {
-          // Perfil não encontrado, criar um novo
-          setError("Perfil não encontrado. Criando perfil...");
-          await createProfile();
-        } else {
-          setError("Erro ao carregar perfil: " + error.message);
-        }
-        return;
-      }
-
-      setProfile(data);
-      setFormData({
-        display_name: data.display_name || "",
-        phone: data.phone || "",
-        profile_image: "", // Será carregado separadamente se a coluna existir
-        instagram: "", // Será carregado separadamente se a coluna existir
-        facebook: "", // Será carregado separadamente se a coluna existir
-      });
-
-      // Tentar carregar os campos adicionais (se existirem)
-      try {
-        const { data: extendedData, error: extendedError } = await supabase
-          .from("profiles")
-          .select("profile_image, instagram, facebook")
-          .eq("id", user?.id)
-          .single();
-
-        if (!extendedError && extendedData) {
-          setFormData(prev => ({
-            ...prev,
-            profile_image: extendedData.profile_image || "",
-            instagram: extendedData.instagram || "",
-            facebook: extendedData.facebook || "",
-          }));
-
-          if (extendedData.profile_image) {
-            setProfileImages([extendedData.profile_image]);
-          }
-        }
-      } catch (extendedErr) {
-        // Campos adicionais podem não existir ainda, isso é normal
-        console.log("Campos adicionais não disponíveis ainda:", extendedErr.message);
-      }
-    } catch (err) {
-      console.error("Erro ao carregar perfil:", err);
-      setError("Erro ao carregar perfil");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function createProfile() {
+  const createProfile = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from("profiles")
@@ -145,7 +71,83 @@ export default function EditarPerfilPage() {
       console.error("Erro ao criar perfil:", err);
       setError("Erro ao criar perfil");
     }
-  }
+  }, [user]);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login");
+      return;
+    }
+
+    if (user) {
+      const loadProfile = async () => {
+        try {
+          setLoading(true);
+          // Query básica primeiro para verificar se o perfil existe
+          const { data, error } = await supabase
+            .from("profiles")
+            .select("id, email, display_name, phone, role, status")
+            .eq("id", user?.id)
+            .single();
+
+          if (error) {
+            console.error("Erro ao carregar perfil:", error);
+            if (error.code === 'PGRST116') {
+              // Perfil não encontrado, criar um novo
+              setError("Perfil não encontrado. Criando perfil...");
+              await createProfile();
+            } else {
+              setError("Erro ao carregar perfil: " + error.message);
+            }
+            return;
+          }
+
+          setProfile(data);
+          setFormData({
+            display_name: data.display_name || "",
+            phone: data.phone || "",
+            profile_image: "",
+            instagram: "",
+            facebook: "",
+          });
+
+          try {
+            const { data: extendedData, error: extendedError } = await supabase
+              .from("profiles")
+              .select("profile_image, instagram, facebook")
+              .eq("id", user?.id)
+              .single();
+
+            if (!extendedError && extendedData) {
+              setFormData(prev => ({
+                ...prev,
+                profile_image: extendedData.profile_image || "",
+                instagram: extendedData.instagram || "",
+                facebook: extendedData.facebook || "",
+              }));
+
+              if (extendedData.profile_image) {
+                setProfileImages([extendedData.profile_image]);
+              }
+            }
+          } catch (extendedErr) {
+            console.log("Campos adicionais não disponíveis ainda:", extendedErr.message);
+          }
+        } catch (err) {
+          console.error("Erro ao carregar perfil:", err);
+          setError("Erro ao carregar perfil");
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      loadProfile();
+    }
+  }, [user, authLoading, router, createProfile]);
+
+  
+
+  
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

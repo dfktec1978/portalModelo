@@ -13,6 +13,7 @@ interface StoreCardProps {
     logo?: string;
     external_url?: string | null;
   };
+  internalHref?: string | null;
 }
 
 /** Retorna a URL com UTM adicionadas (se possível) */
@@ -29,8 +30,9 @@ function buildUtmUrl(store: StoreCardProps["store"]) {
   }
 }
 
-export default function StoreCard({ store }: StoreCardProps) {
+export default function StoreCard({ store, internalHref }: StoreCardProps) {
   const visitUrl = buildUtmUrl(store);
+  const href = internalHref || undefined;
 
   const renderLogo = () => {
     if (!store?.logo) return (
@@ -46,7 +48,14 @@ export default function StoreCard({ store }: StoreCardProps) {
       return (
         <div className="mb-3 flex justify-center">
           <div className="w-28 h-20 flex items-center justify-center overflow-hidden rounded bg-white">
-            <img src={store.logo} alt={store.store_name || store.name || "Loja"} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+            <Image
+              src={store.logo}
+              alt={store.store_name || store.name || "Loja"}
+              width={112}
+              height={80}
+              className="object-contain"
+              unoptimized
+            />
           </div>
         </div>
       );
@@ -81,17 +90,23 @@ export default function StoreCard({ store }: StoreCardProps) {
       )}
 
       <div className="mt-4 flex justify-center">
-        {visitUrl ? (
+        {href || visitUrl ? (
           <a
-            href={visitUrl}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={href || visitUrl}
+            target={href ? undefined : "_blank"}
+            rel={href ? undefined : "noopener noreferrer"}
             className="inline-block px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition"
           >
             Visitar Loja
           </a>
         ) : (
-          <span className="text-sm text-gray-500">Sem site externo</span>
+          <div className="text-sm text-gray-500 text-center">
+            {store.description ? (
+              <span className="line-clamp-3">{store.description}</span>
+            ) : (
+              <span>Sem descrição</span>
+            )}
+          </div>
         )}
       </div>
     </div>

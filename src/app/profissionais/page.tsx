@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import ProfessionalCard from "@/components/ProfessionalCard";
 import { listProfessionals, type Professional, getProfessional } from "@/lib/professionalQueries";
 import { PROFESSIONAL_CATEGORIES } from "@/lib/professionalConstants";
@@ -36,26 +37,24 @@ export default function ProfissionaisPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
 
+  // inicialização: buscar profissionais quando os filtros mudam
   useEffect(() => {
-    loadProfessionals();
-  }, []);
-
-  const loadProfessionals = async () => {
-    setLoading(true);
-    const { data, error } = await listProfessionals({
-      category: selectedCategory === "Todos" ? undefined : selectedCategory,
-      search: searchTerm || undefined,
-    });
-    if (error) {
-      console.error("Erro ao carregar profissionais:", error);
-    } else {
-      setProfessionals(data || []);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    loadProfessionals();
+    let mounted = true;
+    const init = async () => {
+      setLoading(true);
+      const { data, error } = await listProfessionals({
+        category: selectedCategory === "Todos" ? undefined : selectedCategory,
+        search: searchTerm || undefined,
+      });
+      if (error) {
+        console.error("Erro ao carregar profissionais:", error);
+      } else if (mounted) {
+        setProfessionals(data || []);
+      }
+      if (mounted) setLoading(false);
+    };
+    init();
+    return () => { mounted = false; };
   }, [selectedCategory, searchTerm]);
 
   const paginatedProfessionals = professionals.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -64,6 +63,14 @@ export default function ProfissionaisPage() {
   const [selectedProfessional, setSelectedProfessional] = useState<Professional | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
+
+  // Helpers para normalizar links sociais e ícones
+  const makeExternalUrl = (val?: string, prefix?: string) => {
+    if (!val) return null;
+    if (/^https?:\/\//i.test(val)) return val;
+    if (prefix) return `${prefix}${val}`;
+    return `https://${val}`;
+  };
 
   async function openModal(id: string) {
     setModalLoading(true);
@@ -86,6 +93,11 @@ export default function ProfissionaisPage() {
     setSelectedProfessional(null);
     setGalleryIndex(0);
   }
+
+  // URLs normalizadas para links sociais do profissional selecionado
+  const websiteUrl = makeExternalUrl(selectedProfessional?.website);
+  const facebookUrl = makeExternalUrl(selectedProfessional?.facebook, "https://facebook.com/");
+  const instagramUrl = makeExternalUrl(selectedProfessional?.instagram, "https://instagram.com/");
 
   return (
     <div className="space-y-8">
@@ -162,28 +174,56 @@ export default function ProfissionaisPage() {
                 {/* Foto / Logo (col 1) */}
                 <div className="md:col-span-1">
                   {selectedProfessional.profile_image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={selectedProfessional.profile_image} alt={selectedProfessional.name} className="w-full h-auto rounded" />
+                    <div className="w-full">
+                      <Image src={selectedProfessional.profile_image} alt={selectedProfessional.name} width={320} height={320} className="w-full h-auto rounded" />
+                    </div>
                   ) : (
                     <div className="w-full h-40 bg-gray-100 rounded flex items-center justify-center">👤</div>
                   )}
                 </div>
 
                 {/* Descrição / contatos (col 2) */}
-                <div className="md:col-span-1">
+                <div className="md:col-span-1 md:border-r md:border-gray-200 md:pr-6">
                   <p className="text-sm text-gray-600 mb-4">
                     {selectedProfessional.category} {selectedProfessional.specialty ? `• ${selectedProfessional.specialty}` : ""}
                   </p>
                   <SafeHtml html={selectedProfessional.description || ""} className="prose max-w-none" />
-                  <div className="mt-4">
+
+                  {/* Linha separadora (tom de cinza, padrão do portal) */}
+                  <div className="border-t border-gray-200 my-4" />
+
+                  <div className="mt-4 flex items-center gap-4">
                     {selectedProfessional.phone && (
-                      <a href={`https://wa.me/55${selectedProfessional.phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" className="inline-block bg-green-600 text-white px-4 py-2 rounded mr-2">
-                        WhatsApp
+                      <a
+                        href={`https://wa.me/55${selectedProfessional.phone.replace(/\D/g, "")}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex flex-col items-center text-center"
+                        aria-label="Chamar no WhatsApp"
+                      >
+                        <Image src="/img/logos/whatsapp.png" alt="WhatsApp" width={56} height={56} />
+                        <span className="text-xs mt-1 text-gray-700">WhatsApp</span>
                       </a>
                     )}
-                    {selectedProfessional.website && (
-                      <a href={selectedProfessional.website} target="_blank" rel="noreferrer" className="inline-block bg-blue-600 text-white px-4 py-2 rounded">
-                        Site
+
+                    {websiteUrl && (
+                      <a href={websiteUrl} target="_blank" rel="noreferrer" className="flex flex-col items-center text-center" aria-label="Visitar site">
+                        <Image src="/img/logos/site.png" alt="Site" width={56} height={56} />
+                        <span className="text-xs mt-1 text-gray-700">Site</span>
+                      </a>
+                    )}
+
+                    {facebookUrl && (
+                      <a href={facebookUrl} target="_blank" rel="noreferrer" className="flex flex-col items-center text-center" aria-label="Facebook">
+                        <Image src="/img/logos/facebook.png" alt="Facebook" width={56} height={56} />
+                        <span className="text-xs mt-1 text-gray-700">Facebook</span>
+                      </a>
+                    )}
+
+                    {instagramUrl && (
+                      <a href={instagramUrl} target="_blank" rel="noreferrer" className="flex flex-col items-center text-center" aria-label="Instagram">
+                        <Image src="/img/logos/instagram.png" alt="Instagram" width={56} height={56} />
+                        <span className="text-xs mt-1 text-gray-700">Instagram</span>
                       </a>
                     )}
                   </div>
@@ -194,10 +234,10 @@ export default function ProfissionaisPage() {
                   <h4 className="text-sm font-semibold text-[#003049] mb-3">Trabalhos Realizados</h4>
 
                   <div className="w-full mb-3">
-                    {selectedProfessional.gallery_images && selectedProfessional.gallery_images.length > 0 ? (
-                      // imagem em destaque
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={selectedProfessional.gallery_images[galleryIndex]} alt={`Imagem ${galleryIndex + 1}`} className="w-full h-48 object-cover rounded" />
+                      {selectedProfessional.gallery_images && selectedProfessional.gallery_images.length > 0 ? (
+                      <div className="w-full h-48 relative rounded overflow-hidden">
+                        <Image src={selectedProfessional.gallery_images[galleryIndex]} alt={`Imagem ${galleryIndex + 1}`} fill className="object-cover" />
+                      </div>
                     ) : (
                       <div className="w-full h-48 bg-gray-100 rounded flex items-center justify-center text-gray-400">Sem imagens</div>
                     )}
@@ -205,10 +245,9 @@ export default function ProfissionaisPage() {
 
                   {/* Thumbnails (até 4) */}
                   <div className="flex gap-3">
-                    {(selectedProfessional.gallery_images || []).slice(0, 4).map((img, idx) => (
+                        {(selectedProfessional.gallery_images || []).slice(0, 4).map((img, idx) => (
                       <button key={idx} onClick={() => setGalleryIndex(idx)} className="w-20 h-14 rounded overflow-hidden border-2" aria-label={`Ver imagem ${idx + 1}`}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={img} alt={`Miniatura ${idx + 1}`} className={`w-full h-full object-cover ${galleryIndex === idx ? "ring-2 ring-blue-400" : ""}`} />
+                        <Image src={img} alt={`Miniatura ${idx + 1}`} width={160} height={112} className={`${galleryIndex === idx ? "ring-2 ring-blue-400" : ""}`} />
                       </button>
                     ))}
                   </div>
