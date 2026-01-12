@@ -8,8 +8,8 @@ import { doc, getDoc, collection, query, where, getDocs } from "firebase/firesto
 import externalStores from "@/data/externalStores";
 
 export default function LojaDetailPage() {
-  const params = useParams() as { id?: string };
-  const key = params?.id;
+  const params = useParams() as { slug?: string };
+  const key = params?.slug;
   const [store, setStore] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -67,7 +67,7 @@ export default function LojaDetailPage() {
     return () => { mounted = false; };
   }, [key]);
 
-  if (!key) return <div className="p-6">ID/slug da loja ausente.</div>;
+  if (!key) return <div className="p-6">Slug da loja ausente.</div>;
   if (loading) return <div className="p-6">Carregando loja...</div>;
   if (!store) return <div className="p-6">Loja não encontrada.</div>;
 

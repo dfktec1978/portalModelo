@@ -207,15 +207,17 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
         <div className="mb-6">
           {/* Imagem Hero (Capa) */}
           {heroImage && (
-            <div className="w-full h-80 mb-4 rounded-lg overflow-hidden cursor-pointer bg-gray-100 flex items-center justify-center" onClick={() => openLightbox(heroImageIndex)}>
-              <Image
-                src={heroImage}
-                alt={`${news.title} - Imagem principal`}
-                fill
-                className="object-contain"
-                unoptimized
-                onError={() => { /* ignore */ }}
-              />
+            <div className="w-full h-80 mb-4 rounded-lg overflow-hidden cursor-pointer bg-gray-100 flex items-center justify-center relative" onClick={() => openLightbox(heroImageIndex)}>
+              <div className="absolute inset-0">
+                <Image
+                  src={heroImage}
+                  alt={`${news.title} - Imagem principal`}
+                  fill
+                  className="object-contain"
+                  unoptimized
+                  onError={() => { /* ignore */ }}
+                />
+              </div>
             </div>
           )}
 
@@ -227,15 +229,17 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
                 const realIndex = allImages.findIndex(img => img === imgSrc);
                 return (
                   <div key={idx} className="relative group">
-                    <div className="h-20 rounded-lg overflow-hidden cursor-pointer" onClick={() => openLightbox(realIndex)}>
-                      <Image
-                        src={imgSrc}
-                        alt={`${news.title} - Imagem ${realIndex + 1}`}
-                        fill
-                        className="object-cover hover:scale-105 transition-transform"
-                        unoptimized
-                      />
-                    </div>
+                      <div className="h-20 rounded-lg overflow-hidden cursor-pointer relative" onClick={() => openLightbox(realIndex)}>
+                        <div className="absolute inset-0">
+                          <Image
+                            src={imgSrc}
+                            alt={`${news.title} - Imagem ${realIndex + 1}`}
+                            fill
+                            className="object-cover hover:scale-105 transition-transform"
+                            unoptimized
+                          />
+                        </div>
+                      </div>
                     {/* Botão para definir como principal */}
                     <button
                       onClick={(e) => {

@@ -1,0 +1,23 @@
+﻿
+> portal-modelo@0.1.0 dev
+> next dev --turbopack
+
+node.exe : ÔÜá `images.domains` is deprecated in favor of 
+`images.remotePatterns`. Please update next.config.mjs to protect your 
+application from malicious users.
+No linha:1 caractere:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ÔÜá `images.dom...alicious users.:St 
+   ring) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Ôû▓ Next.js 16.1.0 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.8:3000
+- Environments: .env.local
+
+Ô£ô Starting...
+ÔÜá The "middleware" file convention is deprecated. Please use "proxy" instead. 
+Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+Ô£ô Ready in 3.8s
