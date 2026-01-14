@@ -1,70 +1,74 @@
 "use client";
+import React, { useEffect, useState } from "react";
+import StorePanelSidebar from "@/components/StorePanelSidebar";
+import StoreAppearance from "@/components/StoreAppearance";
+import StoreModuleProducts from "@/components/StoreModuleProducts";
+import StoreModuleMenu from "@/components/StoreModuleMenu";
+import StoreOverview from "@/components/StoreOverview";
+import StoreOrdersModule from "@/components/StoreOrdersModule";
+import StoreFinanceModule from "@/components/StoreFinanceModule";
+import StoreSettings from "@/components/StoreSettings";
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { supabase } from "@/lib/supabaseClient";
-
-type Profile = {
-  id: string;
-  email?: string;
-  display_name?: string;
-  phone?: string;
-  role?: string;
-  status?: string;
-};
 
 export default function DashboardPage() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [view, setView] = useState<'overview'|'orders'|'finance'|'appearance'|'settings'|'products'|'menu'>('overview');
+  const [category, setCategory] = useState<'varejo'|'alimentacao'>('varejo');
+  const [selectedStoreSlug, setSelectedStoreSlug] = useState<string | null>(null);
+  const [store, setStore] = useState<any>(null);
+  const [stores, setStores] = useState<Array<any>>([]);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
 
+  // Redirecionar se não autenticado
   useEffect(() => {
     if (!loading && !user) {
       router.push("/login");
-      return;
     }
+  }, [loading, user, router]);
 
-    if (user) {
-      const loadProfile = async () => {
-        try {
-          const { data, error } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", user?.id)
-            .single();
-
-          if (error) {
-            console.error("Erro ao carregar perfil:", error);
-            return;
-          }
-
-          setProfile(data);
-        } catch (err) {
-          console.error("Erro ao carregar perfil:", err);
-        } finally {
-          setLoadingProfile(false);
+  // Carregar lojas e auto-selecionar primeira
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/lojas');
+        const j = await res.json();
+        if (!mounted) return;
+        const storesList = j.stores || [];
+        setStores(storesList);
+        
+        // Auto-select primeira loja se houver
+        if (storesList.length > 0 && !selectedStoreSlug) {
+          const firstSlug = storesList[0].slug;
+          setSelectedStoreSlug(firstSlug);
         }
-      };
-
-      loadProfile();
-    }
-  }, [user, loading, router]);
-
-  
-
-  async function handleSignOut() {
-    const { error } = await signOut();
-    if (error) {
-      console.error("Erro ao deslogar:", error);
+      } catch (e) {
+        console.warn('failed fetch stores', e);
+      } finally {
+  // Carregar loja selecionada
+  useEffect(() => {
+    let mounted = true;
+    if (!selectedStoreSlug) {
+      setStore(null);
       return;
     }
-    router.push("/");
-  }
+    (async () => {
+      try {
+        const res = await fetch(`/api/lojas?slug=${selectedStoreSlug}`);
+        const j = await res.json();
+        if (!mounted) return;
+        setStore(j.store || null);
+        setCategory(j.store?.category === "alimentacao" ? "alimentacao" : "varejo");
+      } catch (e) {
+        console.warn("failed fetch store", e);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [selectedStoreSlug]);
 
-  if (loading || loadingProfile) {
+  if (loading || dashboardLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="text-white text-center">
@@ -78,150 +82,55 @@ export default function DashboardPage() {
   if (!user) {
     return null;
   }
+
   return (
-    <div>
-      <div className="space-y-6">
-        {/* Welcome Card */}
-        <div className="bg-gradient-to-r from-[#D62828] to-[#C41E1E] rounded-lg p-8 text-white">
-          <h1 className="text-3xl font-bold mb-2">
-            Bem-vindo, {profile?.display_name?.split(" ")[0] || "usuário"}! 👋
-          </h1>
-          <p className="text-white/80">
-            Você está conectado como <span className="font-semibold">{user.email}</span>
-          </p>
-        </div>
+    <div className="min-h-screen bg-gray-900">
+      <div className="max-w-7xl mx-auto px-4 py-8 flex gap-6">
+        <StorePanelSidebar 
+          view={view} 
+          setView={setView} 
+          category={category} 
+          setCategory={setCategory}
+          selectedStoreSlug={selectedStoreSlug}
+          setSelectedStoreSlug={setSelectedStoreSlug}
+        />
+        <main className="flex-1 bg-white p-6 rounded shadow text-gray-900">
+          <header className="mb-4 flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold">Painel da Loja</h1>
+              {store && <p className="text-sm text-gray-600 mt-1">{store.name}</p>}
+            </div>
+            <div className="text-sm text-gray-600">Categoria: <strong>{category === 'varejo' ? 'Varejo' : 'Alimentação'}</strong></div>
+          </header>
 
-        {/* Menu de Ações */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {profile?.role === "cliente" && (
-            <>
-              <Link
-                href="/classificados/novo"
-                className="bg-[#FDC500] text-black rounded-lg p-6 hover:bg-[#E8B500] transition font-semibold"
-              >
-                <h3 className="text-lg mb-2">➕ Novo Classificado</h3>
-                <p className="text-black/70 text-sm">Publique um novo anúncio</p>
-              </Link>
-
-              <Link
-                href="/dashboard/meus-classificados"
-                className="bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-6 transition"
-              >
-                <h3 className="font-bold text-lg mb-2">📋 Meus Classificados</h3>
-                <p className="text-gray-400 text-sm">Gerencie seus anúncios</p>
-              </Link>
-            </>
+          {!selectedStoreSlug && (
+            <div className="p-6 border border-yellow-300 bg-yellow-50 rounded text-yellow-800">
+              Selecione uma loja no painel lateral para começar.
+            </div>
           )}
 
-          {profile?.role === "lojista" && (
+          {selectedStoreSlug && (
             <>
-              <Link
-                href="/dashboard/minha-loja"
-                className="bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-6 transition"
-              >
-                <h3 className="font-bold text-lg mb-2">🏪 Minha Loja</h3>
-                <p className="text-gray-400 text-sm">Gerenciar informações</p>
-              </Link>
+              {view === 'overview' && <StoreOverview storeSlug={selectedStoreSlug} />}
+              {view === 'orders' && <StoreOrdersModule storeSlug={selectedStoreSlug} />}
+              {view === 'finance' && <StoreFinanceModule storeSlug={selectedStoreSlug} />}
+              {view === 'appearance' && <StoreAppearance category={category} />}
+              {view === 'settings' && <StoreSettings storeSlug={selectedStoreSlug} />}
 
-              <Link
-                href="/dashboard/pedidos"
-                className="bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-6 transition"
-              >
-                <h3 className="font-bold text-lg mb-2">📦 Pedidos</h3>
-                <p className="text-gray-400 text-sm">Ver vendas recentes</p>
-              </Link>
+              {view === 'products' && category === 'varejo' && (
+                <StoreModuleProducts storeSlug={selectedStoreSlug} />
+              )}
+
+              {view === 'menu' && category === 'alimentacao' && (
+                <StoreModuleMenu storeSlug={selectedStoreSlug} />
+              )}
             </>
           )}
-
-          {profile?.role === "profissional" && (
-            <>
-              <Link
-                href="/dashboard/meu-perfil-profissional"
-                className="bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-6 transition"
-              >
-                <h3 className="font-bold text-lg mb-2">👤 Perfil Profissional</h3>
-                <p className="text-gray-400 text-sm">Editar especialidades</p>
-              </Link>
-
-              <Link
-                href="/dashboard/meus-clientes"
-                className="bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-6 transition"
-              >
-                <h3 className="font-bold text-lg mb-2">👥 Meus Clientes</h3>
-                <p className="text-gray-400 text-sm">Ver histórico</p>
-              </Link>
-            </>
-          )}
-
-          {profile?.role === "admin" && (
-            <>
-              <Link
-                href="/admin"
-                className="bg-[#FDC500] text-black rounded-lg p-6 hover:bg-[#E8B500] transition font-semibold"
-              >
-                <h3 className="text-lg mb-2">⚙️ Painel Administrativo</h3>
-                <p className="text-black/70 text-sm">Gerenciar o sistema</p>
-              </Link>
-
-              <Link
-                href="/admin/lojas"
-                className="bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-6 transition"
-              >
-                <h3 className="font-bold text-lg mb-2">🏪 Gerenciar Lojas</h3>
-                <p className="text-gray-400 text-sm">Administração de lojas</p>
-              </Link>
-
-              <Link
-                href="/admin/noticias"
-                className="bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-6 transition"
-              >
-                <h3 className="font-bold text-lg mb-2">📰 Gerenciar Notícias</h3>
-                <p className="text-gray-400 text-sm">Publicar conteúdo</p>
-              </Link>
-
-              <Link
-                href="/admin/usuarios"
-                className="bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-6 transition"
-              >
-                <h3 className="font-bold text-lg mb-2">👤 Gerenciar Usuários</h3>
-                <p className="text-gray-400 text-sm">Administração de contas</p>
-              </Link>
-            </>
-          )}
-
-          {/* Common for all */}
-          <Link
-            href="/noticias"
-            className="bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-6 transition"
-          >
-            <h3 className="font-bold text-lg mb-2">📰 Notícias</h3>
-            <p className="text-gray-400 text-sm">Fique atualizado</p>
-          </Link>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="bg-white/10 border border-white/20 rounded-lg p-6">
-          <h3 className="font-bold text-lg mb-4">📊 Estatísticas</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center">
-              <p className="text-3xl font-bold text-[#FDC500]">0</p>
-              <p className="text-gray-400 text-sm">Anúncios</p>
-            </div>
-            <div className="text-center">
-              <p className="text-3xl font-bold text-[#FDC500]">0</p>
-              <p className="text-gray-400 text-sm">Visualizações</p>
-            </div>
-            <div className="text-center">
-              <p className="text-3xl font-bold text-[#FDC500]">0</p>
-              <p className="text-gray-400 text-sm">Mensagens</p>
-            </div>
-            <div className="text-center">
-              <p className="text-3xl font-bold text-[#FDC500]">0</p>
-              <p className="text-gray-400 text-sm">Favoritos</p>
-            </div>
-          </div>
-        </div>
+        </main>
       </div>
+    </div>
+  );
+}
     </div>
   );
 }
