@@ -84,20 +84,12 @@ const formatPaymentStatus = (status?: string | null) => {
   return status
 }
 
-const normalizePhone = (value?: string | null) => {
-  if (!value) return ''
-  const digits = value.replace(/\D/g, '')
-  if (!digits) return ''
-  return digits.startsWith('55') ? digits : `55${digits}`
-}
-
 export default function StoreOrdersModule({ store }: Props) {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<string>('all')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [message, setMessage] = useState('')
-  const [sendWhatsappOnStatus, setSendWhatsappOnStatus] = useState(true)
 
   const isRetail = store?.category === 'varejo'
   const STATUS_MAP = isRetail ? RETAIL_STATUS_MAP : FOOD_STATUS_MAP
@@ -241,15 +233,6 @@ export default function StoreOrdersModule({ store }: Props) {
 
       setTimeout(() => setMessage(''), 3000)
 
-      if (sendWhatsappOnStatus && currentOrder?.customer_phone) {
-        const phone = normalizePhone(currentOrder.customer_phone)
-        if (phone) {
-          const statusLabel = STATUS_MAP[newStatus as keyof typeof STATUS_MAP]?.label || newStatus
-          const messageText = `Olá ${currentOrder.customer_name || ''}!\nSeu pedido foi atualizado para: ${statusLabel}.\nPedido #${orderId.substring(0, 8).toUpperCase()}.`
-          const url = `https://wa.me/${phone}?text=${encodeURIComponent(messageText)}`
-          window.open(url, '_blank')
-        }
-      }
     } catch (error) {
       console.error('Erro ao atualizar status:', error)
       setMessage('Erro ao atualizar status')
@@ -354,15 +337,6 @@ export default function StoreOrdersModule({ store }: Props) {
           <p className="text-sm text-gray-600">Gerencie os pedidos da sua loja</p>
         </div>
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-xs text-gray-600">
-            <input
-              type="checkbox"
-              checked={sendWhatsappOnStatus}
-              onChange={(e) => setSendWhatsappOnStatus(e.target.checked)}
-              className="w-4 h-4"
-            />
-            Enviar WhatsApp ao atualizar status
-          </label>
           <button
             onClick={fetchOrders}
             className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
