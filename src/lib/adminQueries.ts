@@ -291,23 +291,40 @@ export function subscribeToAdminStores(callback: (stores: StoreDoc[]) => void) {
       try {
         const { data, error } = await supabase!
           .from('stores')
-          .select('*, owner_id(*)')
+          .select(`
+            id,
+            store_name,
+            owner_id,
+            phone,
+            address,
+            status,
+            created_at,
+            approved_at,
+            profiles!owner_id (
+              id,
+              email,
+              display_name,
+              phone
+            )
+          `)
           .order('created_at', { ascending: false });
 
         if (!error && data) {
           const normalized = data.map((row: any) => ({
             id: row.id,
             storeName: row.store_name,
-            ownerUid: row.owner_id?.id,
-            ownerEmail: row.owner_id?.email,
-            ownerName: row.owner_id?.display_name,
-            phone: row.phone,
+            ownerUid: row.owner_id,
+            ownerEmail: row.profiles?.email,
+            ownerName: row.profiles?.display_name,
+            phone: row.phone || row.profiles?.phone,
             address: row.address,
-            status: row.status,
+            status: row.status || 'pending',
             createdAt: row.created_at,
             approvedAt: row.approved_at,
           }));
           callback(normalized);
+        } else if (error) {
+          console.error('Erro ao buscar lojas:', error);
         }
       } catch (e) {
         console.error('Erro ao buscar lojas:', e);
@@ -317,23 +334,40 @@ export function subscribeToAdminStores(callback: (stores: StoreDoc[]) => void) {
     // Initial fetch
     supabase!
       .from('stores')
-      .select('*, owner_id(*)')
+      .select(`
+        id,
+        store_name,
+        owner_id,
+        phone,
+        address,
+        status,
+        created_at,
+        approved_at,
+        profiles!owner_id (
+          id,
+          email,
+          display_name,
+          phone
+        )
+      `)
       .order('created_at', { ascending: false })
       .then(({ data, error }) => {
         if (!error && data) {
           const normalized = data.map((row: any) => ({
             id: row.id,
             storeName: row.store_name,
-            ownerUid: row.owner_id?.id,
-            ownerEmail: row.owner_id?.email,
-            ownerName: row.owner_id?.display_name,
-            phone: row.phone,
+            ownerUid: row.owner_id,
+            ownerEmail: row.profiles?.email,
+            ownerName: row.profiles?.display_name,
+            phone: row.phone || row.profiles?.phone,
             address: row.address,
-            status: row.status,
+            status: row.status || 'pending',
             createdAt: row.created_at,
             approvedAt: row.approved_at,
           }));
           callback(normalized);
+        } else if (error) {
+          console.error('Erro ao buscar lojas (initial fetch):', error);
         }
       });
 

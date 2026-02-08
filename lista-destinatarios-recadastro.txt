@@ -1,0 +1,71 @@
+=== LISTA DE DESTINATÁRIOS ===
+
+Clientes afetados pela falha do banco de dados (15/01/2026):
+
+1. consolideassessoriacont@gmail.com
+   Nome: Danieli Farias
+   Role: cliente
+   Status anterior: active
+
+2. wj.miranda@yahoo.com.br
+   Nome: William Miranda
+   Role: cliente
+   Status anterior: active
+
+3. claudiocalcado20@gmail.com
+   Nome: Claudio Vieira dos Santos
+   Role: cliente
+   Status anterior: active
+
+4. mateusgskroth@gmail.com
+   Nome: (verificar nome)
+   Role: cliente
+   Status anterior: active
+
+=== INSTRUÇÕES PARA ENVIO ===
+
+Assunto sugerido:
+"Portal Modelo - Ação Necessária: Solicitação de Recadastro"
+
+Antes de enviar, preencha no template:
+- [URL_DO_PORTAL] - URL do seu portal
+- [NÚMERO_WHATSAPP] - Seu número de suporte
+- [BENEFÍCIO] - Ex: "um mês grátis de destaque", "frete grátis na primeira compra", etc.
+- [DATA] - Data limite para o benefício (sugestão: 7-15 dias)
+
+Recomendações:
+✓ Enviar individualmente (não em massa) para parecer mais pessoal
+✓ Personalizar com o nome do cliente quando possível
+✓ Preparar a equipe de suporte para responder dúvidas
+✓ Considerar enviar também via WhatsApp se tiver os contatos
+✓ Oferecer um benefício genuíno como compensação
+
+=== E-MAIL ALTERNATIVO (TEXTO SIMPLES) ===
+
+Se preferir um e-mail mais direto em texto:
+
+---
+
+Assunto: Portal Modelo - Solicitação de Recadastro
+
+Prezado(a) [NOME],
+
+Informamos que, devido a uma falha técnica em nosso sistema no dia 15/01/2026, 
+seu cadastro foi removido acidentalmente do nosso banco de dados.
+
+Lamentamos profundamente pelo ocorrido e solicitamos que você realize um novo 
+cadastro em: [URL_DO_PORTAL]
+
+Como forma de desculpas, estamos oferecendo [BENEFÍCIO] para todos os clientes 
+afetados que realizarem o recadastro até [DATA].
+
+Para dúvidas, entre em contato:
+- E-mail: suporte@portalmodelo.com.br
+- WhatsApp: [NÚMERO]
+
+Agradecemos sua compreensão.
+
+Atenciosamente,
+Equipe Portal Modelo
+
+---

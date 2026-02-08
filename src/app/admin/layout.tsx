@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { useProfile } from "@/lib/useProfile";
 import Image from "next/image";
+import { useEffect } from "react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, signOut } = useAuth();
@@ -11,15 +12,31 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
 
   // Proteção: redirecionar se não estiver logado ou não for admin
-  if (!loading && !profileLoading) {
-    if (!user) {
-      router.push("/login");
-      return null;
+  useEffect(() => {
+    if (!loading && !profileLoading) {
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+      if (profile?.role !== "admin") {
+        router.push("/");
+        return;
+      }
     }
-    if (profile?.role !== "admin") {
-      router.push("/");
-      return null;
-    }
+  }, [user, loading, profile, profileLoading, router]);
+
+  // Mostrar loading enquanto verifica
+  if (loading || profileLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#003049] to-[#162f7a]">
+        <div className="text-white">Verificando permissões...</div>
+      </div>
+    );
+  }
+
+  // Não renderizar conteúdo se não for admin
+  if (!user || profile?.role !== "admin") {
+    return null;
   }
 
   function handleLogout() {
@@ -50,6 +67,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
               </div>
 
+              {/* Botão Editar Perfil */}
+              <Link 
+                href="/admin/editar-perfil" 
+                className="mt-4 block w-full bg-[#FDC500] hover:bg-[#E8B500] text-black font-semibold text-center py-2 rounded transition"
+              >
+                Editar Perfil
+              </Link>
+
               {/* Administrador não precisa do Dashboard do lojista */}
             </div>
 
@@ -78,9 +103,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <h3 className="font-bold text-lg mb-2">👤 Usuários</h3>
                 <p className="text-gray-400 text-sm">Gerenciar usuários</p>
               </Link>
-              <Link href="/admin/usuarios" className="block bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-4 transition">
-                <h3 className="font-bold text-lg mb-2">👤 Usuários</h3>
-                <p className="text-gray-400 text-sm">Gerenciar usuários</p>
+              <Link href="/admin/configuracoes" className="block bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-4 transition">
+                <h3 className="font-bold text-lg mb-2">⚙️ Configurações</h3>
+                <p className="text-gray-400 text-sm">Configurações do sistema</p>
               </Link>
             </nav>
           </aside>

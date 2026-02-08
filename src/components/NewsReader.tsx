@@ -207,7 +207,7 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
         <div className="mb-6">
           {/* Imagem Hero (Capa) */}
           {heroImage && (
-            <div className="w-full h-80 mb-4 rounded-lg overflow-hidden cursor-pointer bg-gray-100 flex items-center justify-center" onClick={() => openLightbox(heroImageIndex)}>
+            <div className="relative w-full h-80 mb-4 rounded-lg overflow-hidden cursor-pointer bg-gray-100" onClick={() => openLightbox(heroImageIndex)}>
               <Image
                 src={heroImage}
                 alt={`${news.title} - Imagem principal`}
@@ -290,7 +290,7 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
       {/* Lightbox Modal */} 
       {lightboxOpen && allImages.length > 0 && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" onClick={closeLightbox}>
-          <div className="relative max-w-4xl max-h-full p-4">
+          <div className="relative w-full max-w-4xl h-[80vh] p-4">
             {/* Botão fechar */}
             <button
               onClick={closeLightbox}
@@ -306,14 +306,14 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
                   e.stopPropagation(); 
                   setCurrentImageIndex((prev) => (prev - 1 + Math.max(1, allImages?.length || 1)) % Math.max(1, allImages?.length || 1));
                 }}
-                className="absolute left-2 top-1/2 transform -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center hover:bg-opacity-75 transition-all"
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center hover:bg-opacity-75 transition-all z-50"
               >
                 ‹
               </button>
             )}
 
             {/* Imagem principal */}
-            <div className="max-w-full max-h-[80vh]">
+            <div className="relative w-full h-full">
               <Image
                 src={allImages[currentImageIndex]}
                 alt={`${news.title} - Imagem ${currentImageIndex + 1}`}
@@ -331,7 +331,7 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
                   e.stopPropagation(); 
                   setCurrentImageIndex((prev) => (prev + 1) % Math.max(1, allImages?.length || 1));
                 }}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center hover:bg-opacity-75 transition-all"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center hover:bg-opacity-75 transition-all z-50"
               >
                 ›
               </button>

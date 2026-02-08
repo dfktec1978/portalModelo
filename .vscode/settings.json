@@ -1,7 +1,5 @@
 {
-  "deno.enablePaths": [
-    "supabase/functions"
-  ],
+  "deno.enablePaths": ["supabase/functions"],
   "deno.lint": true,
   "deno.unstable": [
     "bare-node-builtins",
@@ -22,5 +20,89 @@
     "editor.defaultFormatter": "denoland.vscode-deno"
   },
   "github.copilot.chat.agent.autoFix": true,
-  "workbench.settings.useSplitJSON": false
+  "workbench.settings.useSplitJSON": false,
+
+  // ===== OTIMIZAÇÕES DE PERFORMANCE =====
+
+  // Excluir pastas do File Watcher (economia de RAM e CPU)
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": true,
+    "**/.next/**": true,
+    "**/.turbo/**": true,
+    "**/dist/**": true,
+    "**/build/**": true,
+    "**/.cache/**": true,
+    "**/coverage/**": true,
+    "**/.vercel/**": true,
+    "**/.vscode-test/**": true
+  },
+
+  // Excluir da busca (mais rápido)
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.next": true,
+    "**/.turbo": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.cache": true,
+    "**/coverage": true,
+    "**/.vercel": true,
+    "**/package-lock.json": true,
+    "**/yarn.lock": true,
+    "**/pnpm-lock.yaml": true
+  },
+
+  // Excluir do Explorer (menos carga visual)
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/.next": true,
+    "**/.turbo": true,
+    "**/node_modules": false
+  },
+
+  // TypeScript otimizado
+  "typescript.tsserver.maxTsServerMemory": 8192,
+  "typescript.disableAutomaticTypeAcquisition": true,
+  "typescript.surveys.enabled": false,
+  "typescript.tsserver.experimental.enableProjectDiagnostics": false,
+  "typescript.updateImportsOnFileMove.enabled": "never",
+
+  // ESLint otimizado
+  "eslint.workingDirectories": [{ "mode": "auto" }],
+  "eslint.runtime": "node",
+  "eslint.probe": ["javascript", "typescript", "typescriptreact"],
+  "eslint.validate": ["javascript", "typescript", "typescriptreact"]
+
+  // Git otimizado
+  "git.enabled": true,
+  "git.autorefresh": false,
+  "git.autofetch": false,
+
+  // Editor otimizado
+  "editor.quickSuggestions": {
+    "other": true,
+    "comments": false,
+    "strings": false
+  },
+  "editor.suggest.showWords": false,
+  "editor.minimap.enabled": false,
+  "editor.codeLens": false,
+  "editor.formatOnSave": false,
+  "editor.bracketPairColorization.enabled": false,
+  "editor.guides.bracketPairs": false,
+  "editor.lightbulb.enabled": false,
+  "editor.suggest.preview": false,
+  "editor.parameterHints.enabled": false,
+
+  // Desabilitar recursos pesados
+  "workbench.editor.enablePreview": false,
+  "workbench.editor.revealIfOpen": true,
+  "extensions.autoUpdate": false,
+  "extensions.autoCheckUpdates": false,
+
+  // Telemetria desabilitada
+  "telemetry.telemetryLevel": "off"
 }

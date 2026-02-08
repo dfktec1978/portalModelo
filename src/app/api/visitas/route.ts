@@ -7,15 +7,23 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
 
+// Se as credenciais não estão configuradas, retornar erro 503 (Service Unavailable) em vez de tentar conectar
 if (!supabaseUrl || !serviceRoleKey) {
-  // Allow build but runtime will error if not configured
-  console.warn('Supabase URL or service role key not configured for /api/visitas');
+  console.warn('⚠️ Contador de visitas desabilitado: SUPABASE_SERVICE_ROLE_KEY não configurado');
 }
 
-const sb = createClient(supabaseUrl, serviceRoleKey);
+const sb = !supabaseUrl || !serviceRoleKey ? null : createClient(supabaseUrl, serviceRoleKey);
 
 export async function POST() {
   try {
+    // Se não está configurado, retornar erro silenciosamente
+    if (!sb) {
+      return NextResponse.json(
+        { error: 'Contador de visitas indisponível' },
+        { status: 503 } // Service Unavailable
+      );
+    }
+
     // Try to read current value
     const { data: rows, error: selectError } = await sb.from('site_visits').select('id,count').eq('id', 'global').limit(1).maybeSingle();
 

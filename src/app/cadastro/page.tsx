@@ -17,10 +17,20 @@ export default function CadastroPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [phone, setPhone] = useState("");
 
+  // Endereço
+  const [address, setAddress] = useState("");
+  const [number, setNumber] = useState("");
+  const [neighborhood, setNeighborhood] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [zipcode, setZipcode] = useState("");
+  const [complement, setComplement] = useState("");
+
   // Campos específicos
   const [displayName, setDisplayName] = useState(""); // Para cliente
   const [storeName, setStoreName] = useState(""); // Para lojista
   const [ownerName, setOwnerName] = useState(""); // Para lojista
+  const [storeCategory, setStoreCategory] = useState<"varejo" | "alimentacao">("varejo"); // Categoria da loja
 
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -46,6 +56,11 @@ export default function CadastroPage() {
 
     if (!acceptedTerms) {
       setError("Você deve aceitar os Termos de Uso");
+      return;
+    }
+
+    if (!address.trim() || !number.trim() || !neighborhood.trim() || !city.trim() || !state.trim() || !zipcode.trim()) {
+      setError("Preencha o endereço completo");
       return;
     }
 
@@ -98,26 +113,38 @@ export default function CadastroPage() {
     setShowConfirmModal(false);
     setLoading(true);
     try {
-      // Sign up com Supabase Auth
-      const { error: signUpError } = await signUp(email, password, {
-        display_name: userType === "cliente" ? displayName : ownerName,
-        phone,
-      });
+      console.log('🔵 Iniciando cadastro como:', userType);
+      
+      // Sign up com Supabase Auth - CORRIGIDO: passar userType como terceiro parâmetro
+      const { error: signUpError } = await signUp(email, password, userType);
 
       if (signUpError) {
+        console.error('❌ Erro no signUp:', signUpError);
         setError(signUpError.message || "Erro ao criar conta");
         return;
       }
 
+      // Aguardar um pouco para garantir que o usuário foi criado
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Criar perfil na tabela profiles
       const { data: authData } = await supabase.auth.getUser();
+      console.log('👤 Usuário autenticado:', authData?.user?.id);
+      
       if (authData?.user?.id) {
         const profileData: any = {
           id: authData.user.id,
           email,
           display_name: userType === "cliente" ? displayName : ownerName,
           phone,
-          role: userType,
+          address,
+          number,
+          neighborhood,
+          city,
+          state,
+          zipcode,
+          complement,
+          role: userType, // CRÍTICO: garantir que o tipo está correto
           status: userType === "cliente" ? "active" : "pending",
           accepted_terms: true,
           terms_version: "v1.0",
@@ -128,30 +155,50 @@ export default function CadastroPage() {
           profileData.metadata = { store_name: storeName };
         }
 
+        console.log('📝 Criando perfil com role:', profileData.role);
+
         const { error: profileError } = await supabase
           .from("profiles")
           .upsert(profileData, { onConflict: 'id' });
 
         if (profileError) {
-          console.error("Erro ao criar perfil:", profileError);
+          console.error("❌ Erro ao criar perfil:", profileError);
           setError("Conta criada, mas houve erro no perfil. Contate o suporte.");
           return;
         }
 
+        console.log('✅ Perfil criado com sucesso');
+
         // Para lojista, criar entrada na tabela stores
         if (userType === "lojista") {
+          console.log('🏪 Criando loja:', storeName);
+          
+          const storeSlug = storeName
+            .toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '');
+
           const { error: storeError } = await supabase
             .from("stores")
             .insert({
               owner_id: authData.user.id,
               store_name: storeName,
+              slug: storeSlug,
               phone,
+              address,
+              city,
+              state,
+              zipcode,
+              category: storeCategory,
               status: "pending",
             });
 
           if (storeError) {
-            console.error("Erro ao criar loja:", storeError);
+            console.error("❌ Erro ao criar loja:", storeError);
             // Não bloquear, pois perfil foi criado
+          } else {
+            console.log('✅ Loja criada com sucesso');
           }
         }
       }
@@ -163,9 +210,17 @@ export default function CadastroPage() {
       setPassword("");
       setConfirmPassword("");
       setPhone("");
+      setAddress("");
+      setNumber("");
+      setNeighborhood("");
+      setCity("");
+      setState("");
+      setZipcode("");
+      setComplement("");
       setDisplayName("");
       setStoreName("");
       setOwnerName("");
+      setStoreCategory("varejo");
       setAcceptedTerms(false);
 
       // Redirecionar
@@ -319,6 +374,27 @@ export default function CadastroPage() {
                     />
                   </div>
                   <div>
+                    <label htmlFor="storeCategory" className="block text-sm font-medium mb-1">
+                      Categoria da Loja
+                    </label>
+                    <select
+                      id="storeCategory"
+                      value={storeCategory}
+                      onChange={(e) => setStoreCategory(e.target.value as "varejo" | "alimentacao")}
+                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded text-white focus:outline-none focus:border-white/50"
+                      required
+                      disabled={loading}
+                    >
+                      <option value="varejo" className="bg-[#003049] text-white">Varejo</option>
+                      <option value="alimentacao" className="bg-[#003049] text-white">Alimentação</option>
+                    </select>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {storeCategory === "varejo" 
+                        ? "Venda de produtos físicos em geral"
+                        : "Restaurantes, lanchonetes e food service"}
+                    </p>
+                  </div>
+                  <div>
                     <label htmlFor="ownerName" className="block text-sm font-medium mb-1">
                       Nome do Responsável
                     </label>
@@ -366,6 +442,90 @@ export default function CadastroPage() {
                   placeholder="(11) 99999-9999"
                   className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded text-white placeholder-gray-400 focus:outline-none focus:border-white/50"
                 />
+              </div>
+
+              {/* Endereço */}
+              <div className="pt-2">
+                <label className="block text-sm font-medium mb-2">Endereço</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="md:col-span-2">
+                    <input
+                      type="text"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="Rua / Logradouro"
+                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded text-white placeholder-gray-400 focus:outline-none focus:border-white/50"
+                      required
+                      disabled={loading}
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      value={number}
+                      onChange={(e) => setNumber(e.target.value)}
+                      placeholder="Número"
+                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded text-white placeholder-gray-400 focus:outline-none focus:border-white/50"
+                      required
+                      disabled={loading}
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      value={neighborhood}
+                      onChange={(e) => setNeighborhood(e.target.value)}
+                      placeholder="Bairro"
+                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded text-white placeholder-gray-400 focus:outline-none focus:border-white/50"
+                      required
+                      disabled={loading}
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="Cidade"
+                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded text-white placeholder-gray-400 focus:outline-none focus:border-white/50"
+                      required
+                      disabled={loading}
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      value={state}
+                      onChange={(e) => setState(e.target.value.toUpperCase())}
+                      placeholder="UF"
+                      maxLength={2}
+                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded text-white placeholder-gray-400 focus:outline-none focus:border-white/50"
+                      required
+                      disabled={loading}
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      value={zipcode}
+                      onChange={(e) => setZipcode(e.target.value)}
+                      placeholder="CEP"
+                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded text-white placeholder-gray-400 focus:outline-none focus:border-white/50"
+                      required
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <input
+                      type="text"
+                      value={complement}
+                      onChange={(e) => setComplement(e.target.value)}
+                      placeholder="Complemento (opcional)"
+                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded text-white placeholder-gray-400 focus:outline-none focus:border-white/50"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Password */}
@@ -487,6 +647,8 @@ export default function CadastroPage() {
                 <div className="text-sm text-gray-600 space-y-1">
                   <p><strong>Email:</strong> {email}</p>
                   <p><strong>Telefone:</strong> {phone}</p>
+                  <p><strong>Endereço:</strong> {address}, {number} • {neighborhood} • {city}/{state} • CEP {zipcode}</p>
+                  {complement && <p><strong>Complemento:</strong> {complement}</p>}
 
                   {userType === "cliente" ? (
                     <p><strong>Nome:</strong> {displayName}</p>

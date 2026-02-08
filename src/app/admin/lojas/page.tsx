@@ -4,7 +4,6 @@ import { useAuth } from "@/lib/AuthContext";
 import { useProfile } from "@/lib/useProfile";
 import {
   subscribeToAdminStores,
-  updateStoreStatus,
   type StoreDoc,
 } from "@/lib/adminQueries";
 import externalStores from "@/data/externalStores";
@@ -13,7 +12,6 @@ export default function AdminLojasPage() {
   const { user, loading } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
   const [stores, setStores] = useState<StoreDoc[]>([]);
-  const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
     const unsub = subscribeToAdminStores((arr) => {
@@ -40,20 +38,6 @@ export default function AdminLojasPage() {
 
   if (loading || profileLoading) return <div className="p-8">Carregando...</div>;
   if (!user || profile?.role !== "admin") return <div className="p-8">Acesso negado. Apenas administradores podem acessar esta área.</div>;
-
-  async function changeStatus(id: string, status: string) {
-    if (!confirm(`Confirmar ${status} para a loja ${id}?`)) return;
-    setBusy(id);
-    try {
-      await updateStoreStatus(id, status, user!.id);
-      alert(`Loja ${status} com sucesso`);
-    } catch (e: any) {
-      console.error(e);
-      alert('Erro ao alterar status: ' + (e?.message || 'erro desconhecido'));
-    } finally {
-      setBusy(null);
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -93,25 +77,21 @@ export default function AdminLojasPage() {
           return (
             <div key={s.id} className="bg-white rounded shadow p-4 flex flex-col md:flex-row md:items-center md:justify-between">
               <div className="mb-3 md:mb-0">
-                <div className="font-semibold text-lg">{s.ownerName || s.id}</div>
-                <div className="text-sm text-gray-700">Loja: <span className="font-medium">{(s as any).storeName || '—'}</span></div>
-                <div className="text-sm text-gray-600">Email: {(s as any).ownerEmail || '—'}</div>
-                <div className="text-sm text-gray-600">Telefone: {(s as any).phone || '—'}</div>
-                <div className="text-sm text-gray-500 mt-1">Status: <span className="font-medium">{s.status || 'pending'}</span></div>
+                <div className="font-semibold text-lg text-gray-900">{s.ownerName || s.id}</div>
+                <div className="text-sm text-gray-800">Loja: <span className="font-medium text-gray-900">{(s as any).storeName || '—'}</span></div>
+                <div className="text-sm text-gray-700">Email: {(s as any).ownerEmail || '—'}</div>
+                <div className="text-sm text-gray-700">Telefone: {(s as any).phone || '—'}</div>
+                <div className="text-sm text-gray-600 mt-1">Status: <span className="font-medium text-gray-900">{s.status || 'pending'}</span></div>
               </div>
 
               <div className="flex gap-2 items-center">
-                {s.status !== 'approved' ? (
-                  <>
-                    <button aria-label={`Aprovar ${s.id}`} disabled={busy === s.id} onClick={() => changeStatus(s.id, 'approved')} className="px-3 py-1 bg-green-500 text-white rounded disabled:opacity-50">
-                      {busy === s.id ? 'Processando...' : 'Aprovar'}
-                    </button>
-                    <button aria-label={`Bloquear ${s.id}`} disabled={busy === s.id} onClick={() => changeStatus(s.id, 'blocked')} className="px-3 py-1 bg-red-500 text-white rounded disabled:opacity-50">
-                      {busy === s.id ? 'Processando...' : 'Bloquear'}
-                    </button>
-                  </>
+                {s.status === 'pending' ? (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded px-3 py-1 text-sm text-yellow-800">
+                    <p className="font-semibold">Pendente</p>
+                    <p className="text-xs text-yellow-700 mt-1">Aprovar em <a href="/admin/usuarios" className="underline font-bold">Gestão de Usuários</a></p>
+                  </div>
                 ) : (
-                  <div className="text-sm text-green-600 font-medium">✓ Aprovada</div>
+                  <div className="text-sm text-green-600 font-medium">✓ {(s.status === 'approved' || s.status === 'active') ? 'Aprovada' : 'Bloqueada'}</div>
                 )}
                 <a href={`/admin/lojas/${s.id}/editar`} className="px-3 py-1 bg-blue-600 text-white rounded text-sm">Editar</a>
               </div>
