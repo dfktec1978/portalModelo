@@ -107,14 +107,14 @@ export default function DashboardPage() {
           .map(s => ({
             ...s,
             name: s.store_name || s.name,
-            slug: s.id,
+            slug: s.slug || s.id,
             logo: s.logo_url || s.logo || null
           }));
         
         setStores(storesList);
         
         if (storesList.length === 1 && !selectedStoreSlug) {
-          setSelectedStoreSlug(storesList[0].slug);
+          setSelectedStoreSlug(storesList[0].slug || storesList[0].id);
         }
 
         // Subscrever a mudanças em tempo real (quando loja é aprovada, etc)
@@ -186,7 +186,7 @@ export default function DashboardPage() {
         const { data } = await supabase
           .from('stores')
           .select('*')
-          .eq('id', selectedStoreSlug)
+          .or(`slug.eq.${selectedStoreSlug},id.eq.${selectedStoreSlug}`)
           .maybeSingle();
         
         if (!mounted) return;

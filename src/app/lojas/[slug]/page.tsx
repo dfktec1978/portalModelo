@@ -52,7 +52,7 @@ const THEME_COLORS: Record<string, { primary: string; secondary: string; accent:
 export default function LojaPublicPage() {
   const params = useParams()
   const router = useRouter()
-  const slug = params?.id as string
+  const slug = (params as { slug?: string })?.slug as string
   
   const [store, setStore] = useState<Store | null>(null)
   const [products, setProducts] = useState<Product[]>([])
@@ -118,7 +118,10 @@ export default function LojaPublicPage() {
   }, [cart, store?.id])
 
   useEffect(() => {
-    if (!slug) return
+    if (!slug) {
+      setLoading(false)
+      return
+    }
 
     const fetchStoreData = async () => {
       try {
@@ -127,7 +130,7 @@ export default function LojaPublicPage() {
           .from('stores')
           .select('*')
           .eq('slug', slug)
-          .eq('status', 'active')
+          .in('status', ['active', 'approved'])
           .single()
 
         if (storeError || !storeData) {
