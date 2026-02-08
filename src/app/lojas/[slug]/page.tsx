@@ -130,7 +130,7 @@ export default function LojaPublicPage() {
           .from('stores')
           .select('*')
           .eq('slug', slug)
-          .eq('status', 'active')
+          .in('status', ['active', 'approved'])
           .single()
 
         if (storeError || !storeData) {
