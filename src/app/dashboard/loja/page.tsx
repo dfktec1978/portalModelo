@@ -67,7 +67,7 @@ export default function LojaDashboardPage() {
           {view === 'overview' && <StoreOverview store={selectedStore} />}
           {view === 'orders' && <StoreOrdersModule store={selectedStore} />}
           {view === 'finance' && <StoreFinanceModule store={selectedStore} />}
-          {view === 'appearance' && <StoreAppearance category={category} />}
+          {view === 'appearance' && <StoreAppearance store={selectedStore} />}
           {view === 'settings' && <StoreSettings store={selectedStore} />}
 
           {view === 'products' && category === 'varejo' && (
