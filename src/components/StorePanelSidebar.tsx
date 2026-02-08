@@ -27,7 +27,7 @@ export default function StorePanelSidebar({ view, setView, selectedStoreSlug, se
         console.log('🔍 StorePanelSidebar: Buscando lojas para user.id:', user.id);
         const { data, error } = await supabase
           .from('stores')
-          .select('id, store_name, phone, address, status')
+          .select('id, slug, store_name, phone, address, status, category, logo_url')
           .eq('owner_id', user.id);
         
         if (error) {
@@ -46,15 +46,15 @@ export default function StorePanelSidebar({ view, setView, selectedStoreSlug, se
           .map(s => ({
             ...s,
             name: s.store_name,
-            slug: s.id
+            slug: s.slug || s.id
           }));
         
         console.log('✅ Lojas após filtro (não bloqueadas):', arr.length, arr);
         setStores(arr);
         
         if (arr.length === 1 && setSelectedStoreSlug) {
-          console.log('🎯 Selecionando loja automaticamente:', arr[0].id);
-          setSelectedStoreSlug(arr[0].id);
+          console.log('🎯 Selecionando loja automaticamente:', arr[0].slug || arr[0].id);
+          setSelectedStoreSlug(arr[0].slug || arr[0].id);
         }
       } catch (e) {
         console.error('💥 Erro na busca de lojas:', e);
@@ -138,7 +138,7 @@ export default function StorePanelSidebar({ view, setView, selectedStoreSlug, se
               className="w-full bg-slate-700 text-white border border-slate-600 rounded p-2 text-sm"
             >
               <option value="">(Selecionar loja)</option>
-              {stores.map(s => <option key={s.id} value={s.slug}>{s.name}</option>)}
+              {stores.map(s => <option key={s.id} value={s.slug || s.id}>{s.name}</option>)}
             </select>
           )}
         </div>
