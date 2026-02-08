@@ -224,7 +224,6 @@ export default function LojaPublicPage() {
       cartId: Date.now()
     }
     setCart([...cart, cartItem])
-    setShowCart(false) // Não abrir o carrinho automaticamente
   }
 
   // Abrir modal de produto
