@@ -46,6 +46,7 @@ export default function Header() {
             width={40}
             height={40}
             priority
+            style={{ width: "auto", height: "auto" }}
           />
           <span className="font-bold text-lg hidden sm:inline">Portal Modelo</span>
         </Link>
@@ -64,6 +65,11 @@ export default function Header() {
           <Link href="/profissionais" className="hover:text-yellow-400 transition">
             Profissionais
           </Link>
+          {user && (profile?.role === "cliente" || profile?.role === "lojista") && (
+            <Link href="/minhas-compras" className="hover:text-yellow-400 transition">
+              Minhas Compras
+            </Link>
+          )}
         </nav>
 
         {/* Botão Quero Anunciar */}
@@ -97,13 +103,32 @@ export default function Header() {
                   </div>
 
                   <div className="py-2">
-                    <Link
-                      href="/dashboard"
-                      onClick={() => setMenuOpen(false)}
-                      className="block px-4 py-2 hover:bg-gray-100 transition text-sm"
-                    >
-                      📊 Dashboard
-                    </Link>
+                    {profile?.role === "admin" ? (
+                      <Link
+                        href="/admin"
+                        onClick={() => setMenuOpen(false)}
+                        className="block px-4 py-2 hover:bg-gray-100 transition text-sm"
+                      >
+                        ⚙️ Administração
+                      </Link>
+                    ) : (
+                      <Link
+                        href="/dashboard"
+                        onClick={() => setMenuOpen(false)}
+                        className="block px-4 py-2 hover:bg-gray-100 transition text-sm"
+                      >
+                        📊 Dashboard
+                      </Link>
+                    )}
+                    {(profile?.role === "cliente" || profile?.role === "lojista") && (
+                      <Link
+                        href="/minhas-compras"
+                        onClick={() => setMenuOpen(false)}
+                        className="block px-4 py-2 hover:bg-gray-100 transition text-sm"
+                      >
+                        🧾 Minhas Compras
+                      </Link>
+                    )}
                     <Link
                       href="/classificados"
                       onClick={() => setMenuOpen(false)}
@@ -141,16 +166,6 @@ export default function Header() {
                         className="block px-4 py-2 hover:bg-gray-100 transition text-sm"
                       >
                         👤 Meu Perfil Profissional
-                      </Link>
-                    )}
-
-                    {profile?.role === "admin" && (
-                      <Link
-                        href="/admin"
-                        onClick={() => setMenuOpen(false)}
-                        className="block px-4 py-2 hover:bg-gray-100 transition text-sm"
-                      >
-                        ⚙️ Administração
                       </Link>
                     )}
                   </div>
@@ -208,6 +223,11 @@ export default function Header() {
           <Link href="/classificados" className="block text-white hover:text-yellow-400">
             Classificados
           </Link>
+          {user && (profile?.role === "cliente" || profile?.role === "lojista") && (
+            <Link href="/minhas-compras" className="block text-white hover:text-yellow-400">
+              Minhas Compras
+            </Link>
+          )}
 
           <a
             href="https://wa.me/5549999711065?text=Olá! Gostaria de anunciar no Portal Modelo."

@@ -19,8 +19,10 @@ export default function StoreEditor() {
   const [message, setMessage] = useState<string | null>(null);
 
   const [storeName, setStoreName] = useState("");
+  const [storeSlug, setStoreSlug] = useState("");
   const [description, setDescription] = useState("");
   const [phone, setPhone] = useState("");
+  const [category, setCategory] = useState<"varejo" | "alimentacao">("varejo");
   const [externalUrl, setExternalUrl] = useState("");
   const [logo, setLogo] = useState("");
   const [galleryText, setGalleryText] = useState("");
@@ -41,13 +43,14 @@ export default function StoreEditor() {
     try {
       const generated = generateId(storeName || undefined) as any;
       const id = generated.id;
-      const slug = generated.slug;
+      const finalSlug = storeSlug || generated.slug; // Usar slug customizado ou gerado
 
       const payload: any = {
         storeName,
-        slug,
+        slug: finalSlug,
         description,
         phone,
+        category,
         external_url: externalUrl || null,
         logo: logo || null,
         gallery: gallery.length ? gallery : null,
@@ -56,7 +59,7 @@ export default function StoreEditor() {
       };
 
       const created = await createStore(id, payload);
-      setMessage('Loja criada com sucesso. ID: ' + (created?.id || id));
+      setMessage('Loja criada com sucesso: ' + storeName);
     } catch (err: any) {
       console.error('Erro ao criar loja:', err);
       setMessage('Erro ao criar loja: ' + String(err?.message || err));
@@ -65,12 +68,47 @@ export default function StoreEditor() {
     }
   }
 
+  function handleNameChange(name: string) {
+    setStoreName(name);
+    if (!storeSlug) {
+      const autoSlug = name.toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove acentos
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+      setStoreSlug(autoSlug);
+    }
+  }
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <form onSubmit={handleCreate} className="bg-white p-6 rounded shadow">
         <div className="mb-3">
           <label className="text-sm text-gray-600 block mb-1">Nome da loja</label>
-          <input value={storeName} onChange={(e) => setStoreName(e.target.value)} className="w-full form-input" />
+          <input 
+            value={storeName} 
+            onChange={(e) => handleNameChange(e.target.value)} 
+            className="w-full form-input" 
+            required
+          />
+        </div>
+
+        <div className="mb-3">
+          <label className="text-sm text-gray-600 block mb-1">
+            URL da loja <span className="text-xs text-gray-500">(slug)</span>
+          </label>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500">/lojas/</span>
+            <input 
+              value={storeSlug} 
+              onChange={(e) => setStoreSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+              className="flex-1 form-input font-mono text-sm" 
+              placeholder="loja-demo-modelo"
+              required
+            />
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            Este será o endereço da sua loja. Apenas letras minúsculas, números e hífens.
+          </p>
         </div>
 
         <div className="mb-3">
@@ -81,6 +119,23 @@ export default function StoreEditor() {
         <div className="mb-3">
           <label className="text-sm text-gray-600 block mb-1">Telefone (WhatsApp)</label>
           <input value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full form-input" placeholder="(xx) xxxxx-xxxx" />
+        </div>
+
+        <div className="mb-3">
+          <label className="text-sm text-gray-600 block mb-1">Categoria da Loja</label>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value as "varejo" | "alimentacao")}
+            className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="varejo">Varejo</option>
+            <option value="alimentacao">Alimentação</option>
+          </select>
+          <p className="text-xs text-gray-500 mt-1">
+            {category === "varejo" 
+              ? "Venda de produtos físicos em geral"
+              : "Restaurantes, lanchonetes e food service"}
+          </p>
         </div>
 
         <div className="mb-3">
@@ -134,7 +189,7 @@ export default function StoreEditor() {
         <div className="flex gap-2 mt-4">
           <button type="submit" disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded">{saving ? 'Salvando...' : 'Criar loja'}</button>
           <button type="button" onClick={() => {
-            setStoreName(''); setDescription(''); setPhone(''); setExternalUrl(''); setLogo(''); setGalleryText(''); setMessage(null);
+            setStoreName(''); setDescription(''); setPhone(''); setCategory('varejo'); setExternalUrl(''); setLogo(''); setGalleryText(''); setMessage(null);
           }} className="px-4 py-2 bg-gray-200 rounded">Limpar</button>
         </div>
 

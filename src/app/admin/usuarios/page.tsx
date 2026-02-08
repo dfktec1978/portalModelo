@@ -50,18 +50,22 @@ export default function AdminUsuarios() {
 
   async function handleRoleChange(id: string, newRole: string) {
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ role: newRole })
-        .eq("id", id);
+      const response = await fetch('/api/admin/usuarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: id, action: 'changeRole', role: newRole })
+      });
 
-      if (error) {
-        alert("Erro ao atualizar role: " + error.message);
-      } else {
-        loadUsers(); // Recarregar lista
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert('Erro ao atualizar role: ' + (data.error || 'Erro desconhecido'));
+        return;
       }
+
+      loadUsers();
     } catch (err) {
-      alert("Erro ao atualizar role");
+      alert('Erro ao atualizar role');
     }
   }
 
@@ -83,52 +87,43 @@ export default function AdminUsuarios() {
   }
 
   async function handleApproveUser(id: string) {
+    if (!confirm('Aprovar este usuário?')) return;
+    
     try {
+      // Buscar dados do usuário para ver se é lojista
+      const userToApprove = users.find(u => u.id === id);
+      const isLojista = userToApprove?.role === 'lojista';
 
-      // Primeiro, buscar informações do usuário
-      const { data: userProfile, error: fetchError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      if (fetchError) {
-        alert("Erro ao buscar informações do usuário: " + fetchError.message);
-        return;
-      }
-
-      if (userProfile.status !== "pending") {
-        alert("Este usuário não está pendente de aprovação.");
-        return;
-      }
-
-      const now = new Date().toISOString();
-
-      // Se for lojista, também tentar aprovar a loja automaticamente
-      if (userProfile.role === "lojista") {
-        // Por enquanto, apenas informar que a loja precisa ser aprovada separadamente
-      }
-
-// Atualizar o status do usuário para "active" (usando cliente normal - ajustar RLS se necessário)
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({
-          status: "active",
-          approved_at: now
+      const response = await fetch('/api/admin/usuarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          userId: id, 
+          action: 'approve',
+          approveLoja: isLojista // Aprovar loja também se for lojista
         })
-        .eq("id", id)
-        .eq("status", "pending"); // Só atualizar se estiver pending
+      });
 
-      if (updateError) {
-        alert("Erro ao aprovar usuário: " + updateError.message);
+      const data = await response.json();
+
+      if (!response.ok) {
+        let errorMsg = data.error || 'Erro desconhecido';
+        
+        // Verificar se é erro de função não encontrada ou schema net
+        if (errorMsg.includes('does not exist') || errorMsg.includes('schema net') || 
+            errorMsg.includes('approve_user')) {
+          errorMsg = `${errorMsg}\n\n⚠️ IMPORTANTE: Você precisa executar o SQL em sql/fix-approve-function.sql no painel Supabase.\n\nSiga as instruções em EXECUTAR-SQL-APROVAR.md`;
+        }
+        
+        alert('Erro ao aprovar usuário:\n\n' + errorMsg);
         return;
       }
 
-      alert("✅ Usuário aprovado com sucesso!");
-      loadUsers(); // Recarregar lista
+      alert('✅ Usuário aprovado com sucesso!');
+      loadUsers();
     } catch (error) {
-      console.error("Erro ao aprovar usuário:", error);
-      alert("Erro ao aprovar usuário: " + (error as Error).message);
+      console.error('Erro ao aprovar usuário:', error);
+      alert('Erro ao aprovar usuário: ' + (error as Error).message);
     }
   }
 

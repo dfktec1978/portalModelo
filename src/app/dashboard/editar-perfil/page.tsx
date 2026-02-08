@@ -1,486 +1,278 @@
 "use client";
-
+import React, { useEffect, useState } from "react";
 import { useAuth } from "@/lib/AuthContext";
-import { useRouter } from "next/navigation";
-import { useEffect, useState, useCallback } from "react";
-import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
-import ImageUploadNews from "@/components/ImageUploadNews";
-import { uploadClassifiedImage, deleteClassifiedImage } from "@/lib/classifiedQueries";
-
-type Profile = {
-  id: string;
-  email?: string;
-  display_name?: string;
-  phone?: string;
-  role?: string;
-  status?: string;
-  profile_image?: string;
-  instagram?: string;
-  facebook?: string;
-};
+import { useRouter } from "next/navigation";
 
 export default function EditarPerfilPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState<{
+    display_name?: string;
+    phone?: string;
+    address?: string;
+    number?: string;
+    neighborhood?: string;
+    city?: string;
+    state?: string;
+    zipcode?: string;
+    complement?: string;
+  }>({});
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [profileImages, setProfileImages] = useState<string[]>([]);
-  const [formData, setFormData] = useState({
-    display_name: "",
-    phone: "",
-    profile_image: "",
-    instagram: "",
-    facebook: "",
+  const [loaded, setLoaded] = useState(false);
+  
+  // Estados para alteração de senha
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: ""
   });
-
-  const createProfile = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .insert({
-          id: user?.id,
-          email: user?.email,
-          display_name: user?.email?.split('@')[0] || 'Usuário',
-          role: 'cliente',
-          status: 'active'
-        })
-        .select("id, email, display_name, phone, role, status")
-        .single();
-
-      if (error) {
-        console.error("Erro ao criar perfil:", error);
-        setError("Erro ao criar perfil: " + error.message);
-        return;
-      }
-
-      setProfile(data);
-      setFormData({
-        display_name: data.display_name || "",
-        phone: data.phone || "",
-        profile_image: "",
-        instagram: "",
-        facebook: "",
-      });
-      setProfileImages([]);
-      setError(null);
-    } catch (err) {
-      console.error("Erro ao criar perfil:", err);
-      setError("Erro ao criar perfil");
-    }
-  }, [user]);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (!loading && !user) {
       router.push("/login");
+    }
+  }, [loading, user, router]);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("display_name, phone, address, number, neighborhood, city, state, zipcode, complement")
+        .eq("id", user.id)
+        .maybeSingle?.();
+      setForm({
+        display_name: (data as any)?.display_name || "",
+        phone: (data as any)?.phone || "",
+        address: (data as any)?.address || "",
+        number: (data as any)?.number || "",
+        neighborhood: (data as any)?.neighborhood || "",
+        city: (data as any)?.city || "",
+        state: (data as any)?.state || "",
+        zipcode: (data as any)?.zipcode || "",
+        complement: (data as any)?.complement || ""
+      });
+      setLoaded(true);
+    })();
+  }, [user]);
+
+  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setForm((f) => ({ ...f, [name]: value }));
+  };
+
+  const onSave = async () => {
+    if (!user) return;
+    setSaving(true);
+    await supabase
+      .from("profiles")
+      .update({
+        display_name: form.display_name,
+        phone: form.phone,
+        address: form.address,
+        number: form.number,
+        neighborhood: form.neighborhood,
+        city: form.city,
+        state: form.state,
+        zipcode: form.zipcode,
+        complement: form.complement
+      })
+      .eq("id", user.id);
+    setSaving(false);
+  };
+
+  const onPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPasswordForm((f) => ({ ...f, [name]: value }));
+    setPasswordError(null);
+    setPasswordMessage(null);
+  };
+
+  const onChangePassword = async () => {
+    setPasswordError(null);
+    setPasswordMessage(null);
+
+    // Validações
+    if (!passwordForm.currentPassword) {
+      setPasswordError("Senha atual é obrigatória");
       return;
     }
 
-    if (user) {
-      const loadProfile = async () => {
-        try {
-          setLoading(true);
-          // Query básica primeiro para verificar se o perfil existe
-          const { data, error } = await supabase
-            .from("profiles")
-            .select("id, email, display_name, phone, role, status")
-            .eq("id", user?.id)
-            .single();
-
-          if (error) {
-            console.error("Erro ao carregar perfil:", error);
-            if (error.code === 'PGRST116') {
-              // Perfil não encontrado, criar um novo
-              setError("Perfil não encontrado. Criando perfil...");
-              await createProfile();
-            } else {
-              setError("Erro ao carregar perfil: " + error.message);
-            }
-            return;
-          }
-
-          setProfile(data);
-          setFormData({
-            display_name: data.display_name || "",
-            phone: data.phone || "",
-            profile_image: "",
-            instagram: "",
-            facebook: "",
-          });
-
-          try {
-            const { data: extendedData, error: extendedError } = await supabase
-              .from("profiles")
-              .select("profile_image, instagram, facebook")
-              .eq("id", user?.id)
-              .single();
-
-            if (!extendedError && extendedData) {
-              setFormData(prev => ({
-                ...prev,
-                profile_image: extendedData.profile_image || "",
-                instagram: extendedData.instagram || "",
-                facebook: extendedData.facebook || "",
-              }));
-
-              if (extendedData.profile_image) {
-                setProfileImages([extendedData.profile_image]);
-              }
-            }
-          } catch (extendedErr) {
-            console.log("Campos adicionais não disponíveis ainda:", extendedErr.message);
-          }
-        } catch (err) {
-          console.error("Erro ao carregar perfil:", err);
-          setError("Erro ao carregar perfil");
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      loadProfile();
-    }
-  }, [user, authLoading, router, createProfile]);
-
-  
-
-  
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setSuccess(false);
-
-    // Validação
-    if (!formData.display_name.trim()) {
-      setError("Nome de exibição é obrigatório");
+    if (passwordForm.newPassword.length < 6) {
+      setPasswordError("A nova senha deve ter pelo menos 6 caracteres");
       return;
     }
 
-    if (formData.display_name.trim().length < 2) {
-      setError("Nome de exibição deve ter pelo menos 2 caracteres");
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError("As senhas não coincidem");
       return;
     }
 
-    if (formData.phone && !/^\(\d{2}\)\s\d{4,5}-\d{4}$/.test(formData.phone)) {
-      setError("Telefone deve estar no formato (XX) XXXXX-XXXX");
+    if (passwordForm.currentPassword === passwordForm.newPassword) {
+      setPasswordError("A nova senha deve ser diferente da atual");
       return;
     }
 
-    // Validação do Instagram (opcional)
-    if (formData.instagram && !/^[a-zA-Z0-9._]{1,30}$/.test(formData.instagram)) {
-      setError("Instagram deve conter apenas letras, números, pontos e underscores (máx. 30 caracteres)");
-      return;
-    }
-
-    // Validação do Facebook (opcional) - pode ser URL ou nome de usuário
-    if (formData.facebook && !/^(https?:\/\/)?(www\.)?facebook\.com\/[a-zA-Z0-9.]+\/?$|^[a-zA-Z0-9.]+$/.test(formData.facebook)) {
-      setError("Facebook deve ser uma URL válida do Facebook ou um nome de usuário");
-      return;
-    }
+    setSavingPassword(true);
 
     try {
-      setSaving(true);
+      // Primeiro, verificar se a senha atual está correta tentando fazer login
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user?.email || '',
+        password: passwordForm.currentPassword
+      });
 
-      // Primeiro, tentar atualizar apenas os campos básicos que sempre existem
-      const baseUpdate = {
-        display_name: formData.display_name.trim(),
-        phone: formData.phone.trim() || null,
-      };
-
-      let { error } = await supabase
-        .from("profiles")
-        .update(baseUpdate)
-        .eq("id", user?.id);
-
-      if (error) {
-        setError(error.message);
+      if (signInError) {
+        setPasswordError("Senha atual incorreta");
+        setSavingPassword(false);
         return;
       }
 
-      // Tentar atualizar os campos adicionais (se existirem)
-      try {
-        const extendedUpdate = {
-          profile_image: profileImages[0] || null,
-          instagram: formData.instagram.trim() || null,
-          facebook: formData.facebook.trim() || null,
-        };
+      // Se login bem-sucedido, atualizar senha
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: passwordForm.newPassword
+      });
 
-        const { error: extendedError } = await supabase
-          .from("profiles")
-          .update(extendedUpdate)
-          .eq("id", user?.id);
-
-        if (extendedError) {
-          console.warn("Campos adicionais não puderam ser atualizados:", extendedError.message);
-          // Não falhar a operação por causa dos campos adicionais
-        }
-      } catch (extendedErr) {
-        console.warn("Campos adicionais não disponíveis para atualização:", extendedErr.message);
-        // Continuar normalmente
+      if (updateError) {
+        setPasswordError(updateError.message);
+      } else {
+        setPasswordMessage("Senha alterada com sucesso!");
+        // Limpar formulário
+        setPasswordForm({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: ""
+        });
       }
-
-      setSuccess(true);
-      setTimeout(() => {
-        router.push("/dashboard");
-      }, 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao atualizar perfil");
+      setPasswordError(err instanceof Error ? err.message : "Erro ao alterar senha");
     } finally {
-      setSaving(false);
+      setSavingPassword(false);
     }
-  }
+  };
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  }
-
-  function formatPhone(value: string) {
-    // Remove tudo que não é dígito
-    const digits = value.replace(/\D/g, "");
-
-    // Aplica a máscara (XX) XXXXX-XXXX
-    if (digits.length <= 2) {
-      return digits;
-    } else if (digits.length <= 6) {
-      return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-    } else if (digits.length <= 10) {
-      return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-    } else {
-      return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
-    }
-  }
-
-  function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const formatted = formatPhone(e.target.value);
-    setFormData((prev) => ({ ...prev, phone: formatted }));
-  }
-
-  if (authLoading || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#003049]"></div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            Você precisa estar logado
-          </h1>
-          <p className="text-gray-600 mb-6">
-            Redirecionando para a página de login...
-          </p>
-          <Link href="/login" className="text-[#003049] hover:underline">
-            Ir para login
-          </Link>
-        </div>
-      </div>
-    );
+  if (loading || !loaded) {
+    return <div className="p-6 text-white">Carregando...</div>;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-2xl mx-auto px-4">
-        {/* Header */}
-        <div className="mb-8">
-          <Link href="/dashboard" className="text-[#003049] hover:underline mb-4 inline-block">
-            ← Voltar ao dashboard
-          </Link>
-          <h1 className="text-3xl font-bold text-gray-900">Editar Perfil</h1>
-          <p className="text-gray-600 mt-2">Atualize suas informações pessoais</p>
+    <div className="min-h-screen bg-gray-900">
+      <div className="max-w-3xl mx-auto px-4 py-8">
+        <h1 className="text-2xl font-semibold text-white mb-6">Editar Perfil</h1>
+        
+        {/* Seção: Dados Pessoais */}
+        <div className="bg-white p-6 rounded shadow mb-6">
+          <h2 className="text-lg font-semibold mb-4">Dados Pessoais</h2>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Nome</label>
+            <input name="display_name" value={form.display_name || ""} onChange={onChange} className="w-full border rounded p-2" />
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Telefone</label>
+            <input name="phone" value={form.phone || ""} onChange={onChange} className="w-full border rounded p-2" />
+          </div>
+
+          <div className="border-t pt-4 mt-6">
+            <h3 className="text-md font-semibold mb-4">Endereço</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-1">Rua/Logradouro</label>
+                <input name="address" value={form.address || ""} onChange={onChange} className="w-full border rounded p-2" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Número</label>
+                <input name="number" value={form.number || ""} onChange={onChange} className="w-full border rounded p-2" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Bairro</label>
+                <input name="neighborhood" value={form.neighborhood || ""} onChange={onChange} className="w-full border rounded p-2" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Cidade</label>
+                <input name="city" value={form.city || ""} onChange={onChange} className="w-full border rounded p-2" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Estado (UF)</label>
+                <input name="state" value={form.state || ""} onChange={onChange} maxLength={2} className="w-full border rounded p-2" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">CEP</label>
+                <input name="zipcode" value={form.zipcode || ""} onChange={onChange} className="w-full border rounded p-2" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-1">Complemento</label>
+                <input name="complement" value={form.complement || ""} onChange={onChange} className="w-full border rounded p-2" />
+              </div>
+            </div>
+          </div>
+          <button onClick={onSave} disabled={saving} className="bg-[#FDC500] text-black px-4 py-2 rounded font-semibold hover:bg-[#E8B500]">
+            {saving ? "Salvando..." : "Salvar"}
+          </button>
         </div>
 
-        {/* Form Card */}
-        <div className="bg-white rounded-lg shadow p-8">
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-              {error}
+        {/* Seção: Alterar Senha */}
+        <div className="bg-white p-6 rounded shadow">
+          <h2 className="text-lg font-semibold mb-4">Alterar Senha</h2>
+          
+          {passwordMessage && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded">
+              {passwordMessage}
+            </div>
+          )}
+          
+          {passwordError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded">
+              {passwordError}
             </div>
           )}
 
-          {success && (
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6">
-              Perfil atualizado com sucesso! Redirecionando...
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Display Name */}
-            <div>
-              <label htmlFor="display_name" className="form-label">
-                Nome de Exibição *
-              </label>
-              <input
-                id="display_name"
-                type="text"
-                name="display_name"
-                value={formData.display_name}
-                onChange={handleChange}
-                placeholder="Seu nome completo"
-                maxLength={100}
-                className="form-input"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                {formData.display_name.length}/100 caracteres
-              </p>
-            </div>
-
-            {/* Email (Read-only) */}
-            <div>
-              <label htmlFor="email" className="form-label">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={profile?.email || user.email}
-                disabled
-                className="form-input bg-gray-100 cursor-not-allowed"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                O email não pode ser alterado
-              </p>
-            </div>
-
-            {/* Phone */}
-            <div>
-              <label htmlFor="phone" className="form-label">
-                Telefone
-              </label>
-              <input
-                id="phone"
-                type="text"
-                name="phone"
-                value={formData.phone}
-                onChange={handlePhoneChange}
-                placeholder="(11) 99999-9999"
-                maxLength={15}
-                className="form-input"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Formato: (XX) XXXXX-XXXX
-              </p>
-            </div>
-
-            {/* Profile Image */}
-            <div>
-              <label className="form-label">
-                Foto de Perfil
-              </label>
-              <ImageUploadNews
-                images={profileImages}
-                heroImageIndex={0}
-                onImagesChange={setProfileImages}
-                onHeroImageChange={() => {}}
-                disabled={saving}
-                maxImages={1}
-                uploadFn={async (file: File) => {
-                  const res = await uploadClassifiedImage((user && user.id) || 'anon', file);
-                  return { success: !!res.publicUrl, url: res.publicUrl, error: res.error?.message || (res.error ? String(res.error) : undefined) };
-                }}
-                deleteFn={async (url: string) => {
-                  return await deleteClassifiedImage(url);
-                }}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Faça upload da sua foto de perfil (opcional)
-              </p>
-            </div>
-
-            {/* Instagram */}
-            <div>
-              <label htmlFor="instagram" className="form-label">
-                Instagram
-              </label>
-              <div className="flex">
-                <span className="inline-flex items-center px-3 text-sm text-gray-900 bg-gray-200 border border-r-0 border-gray-300 rounded-l-lg">
-                  @
-                </span>
-                <input
-                  id="instagram"
-                  type="text"
-                  name="instagram"
-                  value={formData.instagram}
-                  onChange={handleChange}
-                  placeholder="seu.usuario"
-                  maxLength={30}
-                  className="form-input rounded-l-none"
-                />
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Seu nome de usuário do Instagram (opcional)
-              </p>
-            </div>
-
-            {/* Facebook */}
-            <div>
-              <label htmlFor="facebook" className="form-label">
-                Facebook
-              </label>
-              <input
-                id="facebook"
-                type="text"
-                name="facebook"
-                value={formData.facebook}
-                onChange={handleChange}
-                placeholder="https://facebook.com/seu.perfil ou seu.perfil"
-                className="form-input"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                URL do seu perfil ou nome de usuário do Facebook (opcional)
-              </p>
-            </div>
-
-            {/* Role (Read-only) */}
-            <div>
-              <label className="form-label">
-                Tipo de Conta
-              </label>
-              <input
-                type="text"
-                value={
-                  profile?.role === "cliente"
-                    ? "Cliente"
-                    : profile?.role === "lojista"
-                    ? "Lojista"
-                    : profile?.role === "profissional"
-                    ? "Profissional"
-                    : "Admin"
-                }
-                disabled
-                className="form-input bg-gray-100 cursor-not-allowed"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Entre em contato com o suporte para alterar o tipo de conta
-              </p>
-            </div>
-
-            {/* Buttons */}
-            <div className="flex gap-4 pt-4">
-              <button
-                type="button"
-                onClick={() => router.push("/dashboard")}
-                className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="flex-1 px-6 py-3 bg-[#003049] hover:bg-[#002539] disabled:bg-gray-400 text-white rounded-lg font-semibold transition"
-              >
-                {saving ? "Salvando..." : "Salvar Alterações"}
-              </button>
-            </div>
-          </form>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Senha Atual</label>
+            <input 
+              type="password" 
+              name="currentPassword" 
+              value={passwordForm.currentPassword} 
+              onChange={onPasswordChange} 
+              className="w-full border rounded p-2"
+              placeholder="Digite sua senha atual"
+            />
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Nova Senha</label>
+            <input 
+              type="password" 
+              name="newPassword" 
+              value={passwordForm.newPassword} 
+              onChange={onPasswordChange} 
+              className="w-full border rounded p-2"
+              placeholder="Mínimo 6 caracteres"
+            />
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Confirmar Nova Senha</label>
+            <input 
+              type="password" 
+              name="confirmPassword" 
+              value={passwordForm.confirmPassword} 
+              onChange={onPasswordChange} 
+              className="w-full border rounded p-2"
+              placeholder="Digite a nova senha novamente"
+            />
+          </div>
+          
+          <button 
+            onClick={onChangePassword} 
+            disabled={savingPassword} 
+            className="bg-blue-600 text-white px-4 py-2 rounded font-semibold hover:bg-blue-700 disabled:opacity-50"
+          >
+            {savingPassword ? "Alterando..." : "Alterar Senha"}
+          </button>
         </div>
       </div>
     </div>

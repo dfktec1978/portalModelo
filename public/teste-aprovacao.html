@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste de Aprovação</title>
+</head>
+<body>
+    <h1>Teste de Aprovação</h1>
+    <button onclick="testarAprovacao()">Aprovar Usuário</button>
+    <pre id="resultado"></pre>
+
+    <script>
+        async function testarAprovacao() {
+            const userId = 'd5fc87dd-b4a7-4588-9daa-0562bd2a51e3';
+            const resultado = document.getElementById('resultado');
+            
+            resultado.textContent = 'Enviando aprovação...';
+            
+            try {
+                const response = await fetch('/api/admin/usuarios', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userId: userId,
+                        action: 'approve',
+                        approveLoja: false
+                    })
+                });
+                
+                resultado.textContent = `Status: ${response.status}\n`;
+                const data = await response.text();
+                resultado.textContent += `Resposta: ${data}`;
+            } catch (err) {
+                resultado.textContent = `Erro: ${err.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

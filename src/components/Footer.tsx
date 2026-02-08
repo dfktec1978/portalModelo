@@ -11,19 +11,23 @@ export default function Footer() {
     async function registerVisit() {
       try {
         const res = await fetch('/api/visitas', { method: 'POST' });
+        if (!res.ok) {
+          // Silenciar erro se endpoint não estiver configurado (503) ou indisponível
+          if (mounted) setLoading(false);
+          return;
+        }
         const json = await res.json();
         if (!mounted) return;
         if (json?.count !== undefined) setVisitCount(Number(json.count));
       } catch (err) {
-        console.error('Erro ao registrar visita', err);
-        // fallback: keep null
+        // Silenciar erro no console (endpoint opcional)
       } finally {
         if (mounted) setLoading(false);
       }
     }
 
     registerVisit();
-    return () => { mounted = false; };
+    return () => { mounted = false };
   }, []);
 
   return (
@@ -35,6 +39,7 @@ export default function Footer() {
           width={160}
           height={90}
           className="opacity-90 hover:opacity-100 transition"
+          style={{ width: "auto", height: "auto" }}
         />
         <p className="text-white text-sm text-center">
           © {new Date().getFullYear()} Portal Modelo — Todos os direitos reservados à DK Works Studio.

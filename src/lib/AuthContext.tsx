@@ -25,11 +25,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, metadata?: any) => {
     try {
+      // Se metadata for string, converter para objeto com role
+      const metadataObj = typeof metadata === 'string' 
+        ? { role: metadata } 
+        : (metadata || {});
+
       const { data: authData, error: signupError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: metadata,
+          data: metadataObj,
         },
       });
 
@@ -47,10 +52,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .insert({
             id: userId,
             email,
-            display_name: metadata?.display_name || email.split("@")[0],
-            phone: metadata?.phone || null,
-            role: "cliente",
-            status: "active",
+            display_name: metadataObj?.display_name || email.split("@")[0],
+            phone: metadataObj?.phone || null,
+            role: metadataObj?.role || "cliente", // CORRIGIDO: usar role do metadata
+            status: metadataObj?.role === "lojista" ? "pending" : "active",
           })
           .select()
           .single();

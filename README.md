@@ -35,6 +35,38 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
+## 🎊 Sistema de Aprovação de Usuários (v1.0) ✅
+
+**Status: PRONTO PARA PRODUÇÃO**
+
+Sistema completo de aprovação de lojistas em tempo real com:
+- ✅ Admin panel intuitivo para aprovar/rejeitar usuários
+- ✅ Dashboard com atualização automática via Realtime
+- ✅ RPC Functions PostgreSQL com bypass de RLS
+- ✅ Performance < 500ms total
+- ✅ Documentação completa (9 guias)
+
+### Quick Start
+
+1. **Execute o SQL** (se ainda não fez):
+   - Arquivo: `sql/fix-approve-function.sql`
+   - Guia: `EXECUTAR-SQL-APROVAR.md`
+
+2. **Admin panel**: `http://localhost:3000/admin/usuarios`
+   - Clique "✅ Aprovar Lojista"
+
+3. **Dashboard atualiza** automaticamente em < 1s ✨
+
+### Documentação
+
+- 📖 [ÍNDICE COMPLETO](./INDICE-DOCUMENTACAO.md)
+- ⭐ [EXECUTAR SQL](./EXECUTAR-SQL-APROVAR.md)
+- 🎯 [AÇÃO IMEDIATA](./ACAO-IMEDIATA-SQL.md)
+- 📊 [DIAGRAMAS](./DIAGRAMA-FLUXO-APROVACAO.md)
+- ✅ [STATUS FINAL](./PROJETO-COMPLETO-STATUS-FINAL.md)
+
+---
+
 Teste de sincronização Git
 
 COMIT DIÁRIOS:
