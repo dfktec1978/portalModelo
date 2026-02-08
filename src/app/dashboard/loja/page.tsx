@@ -10,7 +10,7 @@ import StoreFinanceModule from "@/components/StoreFinanceModule";
 import StoreSettings from "@/components/StoreSettings";
 
 export default function LojaDashboardPage() {
-  const [view, setView] = useState<'overview'|'orders'|'finance'|'appearance'|'settings'|'products'|'menu'>('overview');
+  const [view, setView] = useState<'overview'|'orders'|'finance'|'appearance'|'settings'|'products'|'menu'|'profile'|'schedule'|'stock'|'additionals'|'categories'|'pizza-flavors'|'variants'>('overview');
   const [category, setCategory] = useState<'varejo'|'alimentacao'>('varejo');
   const [selectedStoreSlug, setSelectedStoreSlug] = useState<string | null>(null);
 
