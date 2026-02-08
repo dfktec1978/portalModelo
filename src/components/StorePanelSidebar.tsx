@@ -6,6 +6,8 @@ import Link from "next/link";
 type Props = {
   view: string;
   setView: (v: 'overview'|'orders'|'finance'|'appearance'|'settings'|'products'|'menu'|'profile'|'schedule'|'stock'|'additionals'|'categories'|'pizza-flavors'|'variants') => void;
+  category?: 'varejo' | 'alimentacao';
+  setCategory?: (v: 'varejo' | 'alimentacao') => void;
   selectedStoreSlug?: string | null;
   setSelectedStoreSlug?: (s: string | null) => void;
   user?: any;
