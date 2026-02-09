@@ -180,14 +180,22 @@ export default function DashboardPage() {
       setStore(null);
       return;
     }
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(selectedStoreSlug);
     (async () => {
       try {
+        const local = stores.find(s => s.slug === selectedStoreSlug || s.id === selectedStoreSlug);
+        if (local && mounted) {
+          setStore(local);
+        }
         // Buscar loja por ID (stores não tem coluna slug)
-        const { data } = await supabase
+        const query = supabase
           .from('stores')
           .select('*')
-          .or(`slug.eq.${selectedStoreSlug},id.eq.${selectedStoreSlug}`)
-          .maybeSingle();
+          .eq('slug', selectedStoreSlug);
+
+        const { data } = isUuid
+          ? await query.or(`id.eq.${selectedStoreSlug}`).maybeSingle()
+          : await query.maybeSingle();
         
         if (!mounted) return;
         const st = (data as any) || null;
@@ -203,7 +211,7 @@ export default function DashboardPage() {
       }
     })();
     return () => { mounted = false; };
-  }, [selectedStoreSlug]);
+  }, [selectedStoreSlug, stores]);
 
   const createDemoStore = async () => {
     if (!user || creatingStore) return;
@@ -216,8 +224,15 @@ export default function DashboardPage() {
       });
       const data = await res.json();
       if (data.success && data.stores?.length > 0) {
-        setStores(data.stores);
-        setSelectedStoreSlug(data.stores[0].slug);
+        const normalized = (data.stores as any[]).map((s) => ({
+          ...s,
+          name: s.store_name || s.name,
+          slug: s.slug || s.id,
+          logo: s.logo_url || s.logo || null
+        }));
+        setStores(normalized);
+        const first = normalized[0];
+        setSelectedStoreSlug(first?.slug || first?.id || null);
       }
     } catch (e) {
       console.error('Erro ao criar loja:', e);

@@ -103,10 +103,9 @@ export async function fetchAllNews(): Promise<NewsDoc[]> {
 
     if (error) {
       console.error("Erro ao buscar notícias do Supabase:", error);
-      return [];
+    } else if (data && data.length > 0) {
+      return (data || []).map(normalizeNews);
     }
-
-    return (data || []).map(normalizeNews);
   } else {
     // Firestore
     const q = query(collection(db, "news"), orderBy("publishedAt", "desc"));
@@ -118,6 +117,16 @@ export async function fetchAllNews(): Promise<NewsDoc[]> {
     });
     return arr;
   }
+
+  // Fallback Firestore se Supabase vazio/erro
+  const q = query(collection(db, "news"), orderBy("publishedAt", "desc"));
+  const snap = await getDocs(q);
+  const arr: NewsDoc[] = [];
+  snap.forEach((d) => {
+    const data = d.data() as any;
+    arr.push(normalizeNews({ id: d.id, ...data }));
+  });
+  return arr;
 }
 
 /**
@@ -179,10 +188,9 @@ export async function fetchNewsById(id: string): Promise<NewsDoc | null> {
 
     if (error) {
       console.error("Erro ao buscar notícia do Supabase:", error);
-      return null;
+    } else if (data) {
+      return normalizeNews(data);
     }
-
-    return data ? normalizeNews(data) : null;
   } else {
     // Firestore
     const d = await getDoc(doc(db, "news", id));
@@ -192,6 +200,14 @@ export async function fetchNewsById(id: string): Promise<NewsDoc | null> {
     }
     return null;
   }
+
+  // Fallback Firestore se Supabase vazio/erro
+  const d = await getDoc(doc(db, "news", id));
+  if (d.exists()) {
+    const data = d.data() as any;
+    return normalizeNews({ id: d.id, ...data });
+  }
+  return null;
 }
 
 /**
@@ -209,10 +225,9 @@ export async function fetchNewsSuggestions(excludeId: string, count: number = 4)
 
     if (error) {
       console.error("Erro ao buscar sugestões do Supabase:", error);
-      return [];
+    } else if (data && data.length > 0) {
+      return (data || []).map(normalizeNews);
     }
-
-    return (data || []).map(normalizeNews);
   } else {
     // Firestore
     const q = query(collection(db, "news"), orderBy("publishedAt", "desc"), limit(count + 1));
@@ -226,4 +241,16 @@ export async function fetchNewsSuggestions(excludeId: string, count: number = 4)
     });
     return arr.slice(0, count);
   }
+
+  // Fallback Firestore se Supabase vazio/erro
+  const q = query(collection(db, "news"), orderBy("publishedAt", "desc"), limit(count + 1));
+  const snap = await getDocs(q);
+  const arr: NewsDoc[] = [];
+  snap.forEach((d) => {
+    if (d.id !== excludeId) {
+      const data = d.data() as any;
+      arr.push(normalizeNews({ id: d.id, ...data }));
+    }
+  });
+  return arr.slice(0, count);
 }

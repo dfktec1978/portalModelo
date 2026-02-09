@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/lib/AuthContext";
 import StorePanelSidebar from "@/components/StorePanelSidebar";
 import StoreAppearance from "@/components/StoreAppearance";
 import StoreProductsModule from "@/components/StoreProductsModule";
@@ -11,6 +12,7 @@ import StoreFinanceModule from "@/components/StoreFinanceModule";
 import StoreSettings from "@/components/StoreSettings";
 
 export default function LojaDashboardPage() {
+  const { user } = useAuth();
   const [view, setView] = useState<'overview'|'orders'|'finance'|'appearance'|'settings'|'products'|'menu'|'profile'|'schedule'|'stock'|'additionals'|'categories'|'pizza-flavors'|'variants'>('overview');
   const [category, setCategory] = useState<'varejo'|'alimentacao'>('varejo');
   const [selectedStoreSlug, setSelectedStoreSlug] = useState<string | null>(null);
@@ -23,13 +25,17 @@ export default function LojaDashboardPage() {
     }
 
     let mounted = true;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(selectedStoreSlug);
     (async () => {
       try {
-        const { data, error } = await supabase
+        const query = supabase
           .from('stores')
           .select('*')
-          .eq('id', selectedStoreSlug)
-          .maybeSingle();
+          .eq('slug', selectedStoreSlug);
+
+        const { data, error } = isUuid
+          ? await query.or(`id.eq.${selectedStoreSlug}`).maybeSingle()
+          : await query.maybeSingle();
 
         if (error) throw error;
         if (!mounted) return;
@@ -56,6 +62,7 @@ export default function LojaDashboardPage() {
           setCategory={setCategory}
           selectedStoreSlug={selectedStoreSlug}
           setSelectedStoreSlug={setSelectedStoreSlug}
+          user={user}
           store={selectedStore}
         />
         <main className="flex-1 bg-white p-6 rounded shadow">
