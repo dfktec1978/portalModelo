@@ -180,6 +180,7 @@ export default function DashboardPage() {
       setStore(null);
       return;
     }
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(selectedStoreSlug);
     (async () => {
       try {
         const local = stores.find(s => s.slug === selectedStoreSlug || s.id === selectedStoreSlug);
@@ -187,11 +188,14 @@ export default function DashboardPage() {
           setStore(local);
         }
         // Buscar loja por ID (stores não tem coluna slug)
-        const { data } = await supabase
+        const query = supabase
           .from('stores')
           .select('*')
-          .or(`slug.eq.${selectedStoreSlug},id.eq.${selectedStoreSlug}`)
-          .maybeSingle();
+          .eq('slug', selectedStoreSlug);
+
+        const { data } = isUuid
+          ? await query.or(`id.eq.${selectedStoreSlug}`).maybeSingle()
+          : await query.maybeSingle();
         
         if (!mounted) return;
         const st = (data as any) || null;

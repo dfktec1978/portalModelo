@@ -25,13 +25,17 @@ export default function LojaDashboardPage() {
     }
 
     let mounted = true;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(selectedStoreSlug);
     (async () => {
       try {
-        const { data, error } = await supabase
+        const query = supabase
           .from('stores')
           .select('*')
-          .or(`slug.eq.${selectedStoreSlug},id.eq.${selectedStoreSlug}`)
-          .maybeSingle();
+          .eq('slug', selectedStoreSlug);
+
+        const { data, error } = isUuid
+          ? await query.or(`id.eq.${selectedStoreSlug}`).maybeSingle()
+          : await query.maybeSingle();
 
         if (error) throw error;
         if (!mounted) return;
