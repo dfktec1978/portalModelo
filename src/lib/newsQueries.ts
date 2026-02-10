@@ -212,6 +212,16 @@ export async function fetchNewsById(id: string): Promise<NewsDoc | null> {
     const data = docSnap.data() as any;
     return normalizeNews({ id: docSnap.id, ...data });
   }
+
+  try {
+    const res = await fetch(`/api/news/${id}`, { cache: "no-store" });
+    if (res.ok) {
+      const payload = await res.json();
+      if (payload?.data) return normalizeNews(payload.data);
+    }
+  } catch (e) {
+    console.warn("Falha ao buscar notícia via API:", e);
+  }
   return null;
 }
 
