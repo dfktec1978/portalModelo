@@ -15,6 +15,7 @@ import {
   doc,
   getDoc,
   onSnapshot,
+  where,
 } from "firebase/firestore";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -202,6 +203,14 @@ export async function fetchNewsById(id: string): Promise<NewsDoc | null> {
   if (d.exists()) {
     const data = d.data() as any;
     return normalizeNews({ id: d.id, ...data });
+  }
+
+  const q = query(collection(db, "news"), where("id", "==", id), limit(1));
+  const snap = await getDocs(q);
+  if (!snap.empty) {
+    const docSnap = snap.docs[0];
+    const data = docSnap.data() as any;
+    return normalizeNews({ id: docSnap.id, ...data });
   }
   return null;
 }
