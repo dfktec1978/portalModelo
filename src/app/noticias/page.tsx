@@ -43,8 +43,16 @@ export default function NoticiasPublicPage() {
     };
   }, []);
 
-  function openNews(id: string) {
-    router.push(`/noticias/${id}`);
+  function openNews(news: NewsDoc) {
+    if (news?.id) {
+      router.push(`/noticias/${news.id}`);
+      return;
+    }
+    if (news?.link) {
+      window.open(news.link, "_blank");
+      return;
+    }
+    alert("Notícia sem identificador válido.");
   }
 
   function editNews(id: string) {

@@ -44,7 +44,7 @@ export default function NewsRow({
   onDeleteAction,
 }: {
   news: NewsDoc;
-  onOpenAction: (id: string) => void;
+  onOpenAction: (news: NewsDoc) => void;
   onEditAction?: (id: string) => void;
   onDeleteAction?: (id: string) => void;
 }) {
@@ -56,7 +56,7 @@ export default function NewsRow({
   return (
     <div className="group w-full hover:bg-gray-50 p-3 rounded-md flex items-start gap-4">
       <button
-        onClick={() => onOpenAction(news.id)}
+        onClick={() => onOpenAction(news)}
         className="flex items-start gap-4 flex-1 text-left"
       >
         {imgSrc ? (
