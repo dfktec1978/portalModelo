@@ -81,7 +81,7 @@ export default function NoticiasPublicPage() {
           <div className="bg-white rounded p-6">Nenhuma notícia publicada no momento.</div>
         ) : (
           <div className="flex flex-col divide-y">
-            {news.map((n) => (
+            {news.filter((n) => n.id || n.link).map((n) => (
               <div key={n.id} className="py-2">
                 <NewsRow
                   news={n}
