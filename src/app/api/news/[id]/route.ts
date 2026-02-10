@@ -3,9 +3,9 @@ import { createClient } from "@supabase/supabase-js";
 
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params?.id;
+  const { id } = await params;
   if (!id || id === "undefined") {
     return NextResponse.json({ error: "missing_id" }, { status: 400 });
   }
