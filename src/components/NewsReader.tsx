@@ -36,6 +36,11 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
     let mounted = true;
 
     async function load() {
+      if (!id) {
+        setNews(null);
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
         // Fetch notícia específica (dual-mode)
