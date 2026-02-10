@@ -29,7 +29,7 @@ type Order = {
 export default function PedidoPage() {
   const router = useRouter()
   const params = useParams()
-  const storeId = params?.id as string
+  const storeId = params?.slug as string
   const orderId = params?.orderId as string
 
   const [order, setOrder] = useState<Order | null>(null)
@@ -220,133 +220,50 @@ export default function PedidoPage() {
           <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
             💳 Pagamento
           </h2>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-500 font-medium">Método</p>
-                <p className="text-gray-800 font-semibold">
-                  {order.payment_method === 'pix' ? '🔵 Pix' : '💵 Dinheiro na Entrega'}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 font-medium">Status</p>
-                <p className={`font-semibold ${
-                  order.status === 'confirmed' ? 'text-green-600' :
-                  order.status === 'cancelled' ? 'text-red-600' :
-                  'text-yellow-600'
-                }`}>
-                  {statusLabel[order.status as keyof typeof statusLabel] || order.status}
-                </p>
-              </div>
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm text-gray-500 font-medium">Método</p>
+              <p className="text-gray-800 font-semibold">{order.payment_method}</p>
             </div>
-
-            {order.payment_method === 'pix' && order.pix_qr_code && (
-              <div className="border-t pt-4">
-                <p className="text-sm text-gray-500 font-medium mb-3">QR Code Pix</p>
-                <div className="flex flex-col gap-3">
-                  <img src={order.pix_qr_code} alt="QR Code Pix" className="w-full max-w-xs mx-auto border rounded-lg p-2 bg-gray-50" />
-                  {order.pix_transaction_id && (
-                    <div>
-                      <p className="text-xs text-gray-600 mb-2">Chave Pix (Copia e Cola):</p>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={order.pix_transaction_id}
-                          readOnly
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 font-mono"
-                        />
-                        <button
-                          onClick={copyPixKey}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors text-sm"
-                        >
-                          {copied ? '✓ Copiado' : 'Copiar'}
-                        </button>
-                      </div>
-                    </div>
-                  )}
+            {order.pix_transaction_id && (
+              <div>
+                <p className="text-sm text-gray-500 font-medium">Chave/TxID</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-gray-800 font-semibold break-all text-sm">{order.pix_transaction_id}</p>
+                  <button
+                    onClick={copyPixKey}
+                    className="text-xs px-2 py-1 rounded bg-gray-100 hover:bg-gray-200"
+                  >
+                    {copied ? 'Copiado' : 'Copiar'}
+                  </button>
                 </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Items Summary */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">📋 Itens do Pedido</h2>
-          <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
-            {order.items.map((item: any, idx: number) => {
-              const itemTotal = item.price * item.quantity + (item.additionals?.reduce((sum: number, ad: any) => sum + ad.price * item.quantity, 0) || 0)
-              return (
-                <div key={idx} className="flex justify-between items-start pb-3 border-b last:border-b-0">
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-800">{item.name}</p>
-                    <p className="text-sm text-gray-600">Quantidade: {item.quantity}x</p>
-                    {item.variant && (
-                      <p className="text-sm text-gray-600">
-                        Variante: {item.variant.color || '—'} - {item.variant.size || '—'}
-                      </p>
-                    )}
-                    {item.additionals && item.additionals.length > 0 && (
-                      <p className="text-sm text-gray-600">Adicionais: {item.additionals.map((ad: any) => ad.name).join(', ')}</p>
-                    )}
-                  </div>
-                  <p className="font-bold text-gray-800">R$ {itemTotal.toFixed(2)}</p>
+        {/* Items */}
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            🧾 Itens
+          </h2>
+          <div className="divide-y">
+            {order.items.map((item: any, idx: number) => (
+              <div key={idx} className="py-3 flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-gray-800">{item.name}</div>
+                  <div className="text-sm text-gray-500">Qtd: {item.quantity}</div>
                 </div>
-              )
-            })}
-          </div>
-
-          {/* Order Total */}
-          <div className="border-t pt-4 space-y-2">
-            <div className="flex justify-between text-gray-600">
-              <span>Subtotal</span>
-              <span>R$ {itemsTotal.toFixed(2)}</span>
-            </div>
-            {order.delivery_fee && order.delivery_fee > 0 && (
-              <div className="flex justify-between text-gray-600">
-                <span>Taxa de Entrega</span>
-                <span>R$ {order.delivery_fee.toFixed(2)}</span>
+                <div className="text-gray-800 font-semibold">
+                  R$ {(item.price * item.quantity).toFixed(2)}
+                </div>
               </div>
-            )}
-            <div className="flex justify-between text-xl font-bold text-gray-800 pt-2 border-t">
-              <span>Total</span>
-              <span>R$ {order.total.toFixed(2)}</span>
-            </div>
+            ))}
           </div>
-        </div>
-
-        {/* Next Steps */}
-        <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6 mb-6">
-          <h3 className="font-bold text-blue-900 mb-3 flex items-center gap-2">
-            ℹ️ Próximas Etapas
-          </h3>
-          <ul className="space-y-2 text-sm text-blue-800">
-            {order.payment_method === 'pix' && (
-              <>
-                <li>✅ 1. Faça o pagamento via Pix usando o QR code acima</li>
-                <li>✅ 2. Você receberá uma confirmação quando o pagamento for processado</li>
-              </>
-            )}
-            <li>✅ Acompanhe seu pedido no WhatsApp: {order.client_phone}</li>
-            <li>✅ Você receberá um email de confirmação em {order.client_email}</li>
-            <li>✅ Entre em contato se tiver dúvidas sobre seu pedido</li>
-          </ul>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Link
-            href={`/lojas/${storeSlug || storeId}`}
-            className="inline-block px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors text-center"
-          >
-            ← Voltar para Loja
-          </Link>
-          <button
-            onClick={() => window.print()}
-            className="px-6 py-3 bg-gray-600 text-white rounded-xl font-bold hover:bg-gray-700 transition-colors"
-          >
-            🖨️ Imprimir Pedido
-          </button>
+          <div className="pt-4 mt-4 border-t flex items-center justify-between">
+            <span className="text-gray-600">Total</span>
+            <span className="text-xl font-bold text-gray-800">R$ {order.total.toFixed(2)}</span>
+          </div>
         </div>
       </div>
     </main>

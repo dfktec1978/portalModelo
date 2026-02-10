@@ -1,8 +1,7 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useParams } from 'next/navigation'
+import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import CheckoutFlow from '@/components/CheckoutFlow'
 
 type CartItem = {
@@ -19,7 +18,7 @@ export default function CheckoutPage() {
   const router = useRouter()
   const params = useParams()
   const searchParams = useSearchParams()
-  const storeId = params?.id as string
+  const storeId = params?.slug as string
 
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [cartTotal, setCartTotal] = useState(0)

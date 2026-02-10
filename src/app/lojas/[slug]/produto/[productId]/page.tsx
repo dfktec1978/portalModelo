@@ -45,7 +45,7 @@ const THEME_COLORS: Record<string, { primary: string; secondary: string; accent:
 export default function ProductPage() {
   const params = useParams()
   const router = useRouter()
-  const slug = params?.id as string
+  const slug = params?.slug as string
   const productId = params?.productId as string
   
   const [store, setStore] = useState<Store | null>(null)
@@ -218,9 +218,7 @@ export default function ProductPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Produto não encontrado</h1>
-          <Link href={`/lojas/${slug}`} className="text-blue-600 hover:underline">
-            Voltar para loja
-          </Link>
+          <Link href={`/lojas/${slug}`} className="text-blue-600 hover:underline">Voltar para loja</Link>
         </div>
       </div>
     )
