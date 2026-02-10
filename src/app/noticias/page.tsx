@@ -43,8 +43,16 @@ export default function NoticiasPublicPage() {
     };
   }, []);
 
-  function openNews(id: string) {
-    router.push(`/noticias/${id}`);
+  function openNews(news: NewsDoc) {
+    if (news?.id) {
+      router.push(`/noticias/${news.id}`);
+      return;
+    }
+    if (news?.link) {
+      window.open(news.link, "_blank");
+      return;
+    }
+    alert("Notícia sem identificador válido.");
   }
 
   function editNews(id: string) {
@@ -73,7 +81,7 @@ export default function NoticiasPublicPage() {
           <div className="bg-white rounded p-6">Nenhuma notícia publicada no momento.</div>
         ) : (
           <div className="flex flex-col divide-y">
-            {news.map((n) => (
+            {news.filter((n) => n.id || n.link).map((n) => (
               <div key={n.id} className="py-2">
                 <NewsRow
                   news={n}

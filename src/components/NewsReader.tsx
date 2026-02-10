@@ -36,6 +36,11 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
     let mounted = true;
 
     async function load() {
+      if (!id || id === 'undefined') {
+        setNews(null);
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
         // Fetch notícia específica (dual-mode)
@@ -273,7 +278,7 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
           <div className="text-sm text-gray-500">Sem sugestões por enquanto.</div>
         ) : (
           <ul className="space-y-2">
-            {suggestions.map((s) => (
+              {suggestions.filter((s) => s.id).map((s) => (
               <li key={s.id}>
                 <a
                   href={`/noticias/${s.id}`}

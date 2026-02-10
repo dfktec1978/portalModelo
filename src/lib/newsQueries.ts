@@ -182,6 +182,11 @@ export function subscribeToNews(
  * Buscar uma notícia específica por ID
  */
 export async function fetchNewsById(id: string): Promise<NewsDoc | null> {
+  if (!id || id === 'undefined') return null;
+  if (HAS_SUPABASE) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+    if (!isUuid) return null;
+  }
   if (HAS_SUPABASE) {
     // Supabase
     const { data, error } = await supabase.from("news").select("*").eq("id", id).single();
