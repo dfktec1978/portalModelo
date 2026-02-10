@@ -185,34 +185,6 @@ export function subscribeToNews(
 export async function fetchNewsById(id: string): Promise<NewsDoc | null> {
   if (!id || id === 'undefined') return null;
 
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
-
-  if (HAS_SUPABASE && isUuid) {
-    // Supabase
-    const { data, error } = await supabase.from("news").select("*").eq("id", id).single();
-
-    if (error) {
-      console.error("Erro ao buscar notícia do Supabase:", error);
-    } else if (data) {
-      return normalizeNews(data);
-    }
-  }
-
-  // Firestore (fallback para IDs não-UUID ou Supabase vazio/erro)
-  const d = await getDoc(doc(db, "news", id));
-  if (d.exists()) {
-    const data = d.data() as any;
-    return normalizeNews({ id: d.id, ...data });
-  }
-
-  const q = query(collection(db, "news"), where("id", "==", id), limit(1));
-  const snap = await getDocs(q);
-  if (!snap.empty) {
-    const docSnap = snap.docs[0];
-    const data = docSnap.data() as any;
-    return normalizeNews({ id: docSnap.id, ...data });
-  }
-
   try {
     const res = await fetch(`/api/news/${id}`, { cache: "no-store" });
     if (res.ok) {
@@ -221,6 +193,40 @@ export async function fetchNewsById(id: string): Promise<NewsDoc | null> {
     }
   } catch (e) {
     console.warn("Falha ao buscar notícia via API:", e);
+  }
+
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+
+  if (HAS_SUPABASE && isUuid) {
+    try {
+      const { data, error } = await supabase.from("news").select("*").eq("id", id).single();
+
+      if (error) {
+        console.error("Erro ao buscar notícia do Supabase:", error);
+      } else if (data) {
+        return normalizeNews(data);
+      }
+    } catch (e) {
+      console.warn("Falha ao buscar notícia do Supabase:", e);
+    }
+  }
+
+  try {
+    const d = await getDoc(doc(db, "news", id));
+    if (d.exists()) {
+      const data = d.data() as any;
+      return normalizeNews({ id: d.id, ...data });
+    }
+
+    const q = query(collection(db, "news"), where("id", "==", id), limit(1));
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      const docSnap = snap.docs[0];
+      const data = docSnap.data() as any;
+      return normalizeNews({ id: docSnap.id, ...data });
+    }
+  } catch (e) {
+    console.warn("Falha ao buscar notícia no Firestore:", e);
   }
   return null;
 }
