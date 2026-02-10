@@ -183,11 +183,10 @@ export function subscribeToNews(
  */
 export async function fetchNewsById(id: string): Promise<NewsDoc | null> {
   if (!id || id === 'undefined') return null;
-  if (HAS_SUPABASE) {
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
-    if (!isUuid) return null;
-  }
-  if (HAS_SUPABASE) {
+
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+
+  if (HAS_SUPABASE && isUuid) {
     // Supabase
     const { data, error } = await supabase.from("news").select("*").eq("id", id).single();
 
@@ -196,17 +195,9 @@ export async function fetchNewsById(id: string): Promise<NewsDoc | null> {
     } else if (data) {
       return normalizeNews(data);
     }
-  } else {
-    // Firestore
-    const d = await getDoc(doc(db, "news", id));
-    if (d.exists()) {
-      const data = d.data() as any;
-      return normalizeNews({ id: d.id, ...data });
-    }
-    return null;
   }
 
-  // Fallback Firestore se Supabase vazio/erro
+  // Firestore (fallback para IDs não-UUID ou Supabase vazio/erro)
   const d = await getDoc(doc(db, "news", id));
   if (d.exists()) {
     const data = d.data() as any;
