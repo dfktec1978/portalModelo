@@ -182,7 +182,7 @@ export function subscribeToNews(
  * Buscar uma notícia específica por ID
  */
 export async function fetchNewsById(id: string): Promise<NewsDoc | null> {
-  if (!id) return null;
+  if (!id || id === 'undefined') return null;
   if (HAS_SUPABASE) {
     // Supabase
     const { data, error } = await supabase.from("news").select("*").eq("id", id).single();

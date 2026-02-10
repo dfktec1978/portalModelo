@@ -36,7 +36,7 @@ export default function NewsReader({ id, onCloseAction }: { id: string; onCloseA
     let mounted = true;
 
     async function load() {
-      if (!id) {
+      if (!id || id === 'undefined') {
         setNews(null);
         setLoading(false);
         return;
