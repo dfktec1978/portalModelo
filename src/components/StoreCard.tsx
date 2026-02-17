@@ -93,8 +93,8 @@ export default function StoreCard({ store, internalHref }: StoreCardProps) {
         {href || visitUrl ? (
           <a
             href={href || visitUrl}
-            target={href ? undefined : "_blank"}
-            rel={href ? undefined : "noopener noreferrer"}
+            target={(href || (visitUrl && !visitUrl.startsWith('/'))) ? undefined : "_blank"}
+            rel={(href || (visitUrl && !visitUrl.startsWith('/'))) ? undefined : "noopener noreferrer"}
             className="inline-block px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition"
           >
             Visitar Loja

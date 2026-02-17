@@ -29,6 +29,15 @@ const externalStores: ExternalStore[] = [
     category: "Produtos",
     location: "Modelo-SC",
   },
+  {
+    id: "ciceranails",
+    store_name: "Cícera Nails",
+    description: "Elegância para seus pés e mãos - Esmaltação em gel, blindagem e manicure russa",
+    logo: "/img/lojas/ciceranails/logo-hero.png",
+    external_url: "/lojas/ciceranails",
+    category: "Serviços",
+    location: "Modelo-SC",
+  },
 ];
 
 export default externalStores;
