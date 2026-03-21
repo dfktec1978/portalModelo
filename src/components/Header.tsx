@@ -74,7 +74,7 @@ export default function Header() {
 
         {/* Botão Quero Anunciar */}
         <a
-          href="https://wa.me/5549999711065?text=Olá! Gostaria de anunciar no Portal Modelo."
+          href="https://wa.me/5549989232307?text=Olá! Gostaria de anunciar no Portal Modelo."
           target="_blank"
           rel="noopener noreferrer"
           className="bg-[#FDC500] hover:bg-[#E6B800] text-[#003049] px-4 py-2 rounded font-semibold text-sm transition hidden md:block"
@@ -230,7 +230,7 @@ export default function Header() {
           )}
 
           <a
-            href="https://wa.me/5549999711065?text=Olá! Gostaria de anunciar no Portal Modelo."
+            href="https://wa.me/5549989232307?text=Olá! Gostaria de anunciar no Portal Modelo."
             target="_blank"
             rel="noopener noreferrer"
             className="block bg-[#FDC500] text-[#003049] text-center py-2 rounded font-semibold mt-3"
