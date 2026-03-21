@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { getServerPlanDefaults } from '@/lib/storePlansServer';
 
 const DATA_PATH = path.join(process.cwd(), 'data', 'stores.json');
 
@@ -30,6 +31,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { name, slug, category, theme } = body;
+    const planDefaults = await getServerPlanDefaults('presenca');
     if (!name || !category) return NextResponse.json({ error: 'name and category required' }, { status: 400 });
     if (!Object.keys(ALLOWED_CATEGORIES).includes(category)) return NextResponse.json({ error: 'invalid category' }, { status: 400 });
 
@@ -48,6 +50,7 @@ export async function POST(req: NextRequest) {
       slug: uniq,
       category,
       theme: theme || 'azul',
+      ...planDefaults,
       created_at: new Date().toISOString()
     };
 

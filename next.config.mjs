@@ -7,6 +7,11 @@ const nextConfig = {
         hostname: "poltjzvbrngbkyhnuodw.supabase.co",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "files.manuscdn.com",
+        pathname: "/**",
+      },
     ],
   },
 };

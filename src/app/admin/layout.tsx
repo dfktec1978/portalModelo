@@ -87,6 +87,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <h3 className="font-bold text-lg mb-2">🏪 Lojas</h3>
                 <p className="text-gray-400 text-sm">Gerenciar lojas</p>
               </Link>
+              <Link href="/admin/planos" className="block bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-4 transition">
+                <h3 className="font-bold text-lg mb-2">💳 Planos</h3>
+                <p className="text-gray-400 text-sm">Gerenciar preços e limites</p>
+              </Link>
               <Link href="/admin/noticias" className="block bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-4 transition">
                 <h3 className="font-bold text-lg mb-2">📰 Notícias</h3>
                 <p className="text-gray-400 text-sm">Gerenciar notícias</p>

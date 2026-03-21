@@ -6,6 +6,9 @@ import { useAuth } from "@/lib/AuthContext";
 import { db } from "@/lib/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { supabase } from "@/lib/supabaseClient";
+import Link from "next/link";
+import { useStorePlans } from "@/lib/useStorePlans";
+import { getPlanDefaults, normalizeStorePlan } from "@/lib/storePlans";
 
 const HAS_SUPABASE =
   typeof process.env.NEXT_PUBLIC_SUPABASE_URL !== "undefined" &&
@@ -20,14 +23,20 @@ export default function CadastroLogistaPage() {
   const [storeName, setStoreName] = useState("");
   const [ownerName, setOwnerName] = useState("");
   const [phone, setPhone] = useState("");
+  const [selectedPlan, setSelectedPlan] = useState<"presenca" | "destaque" | "premium">("presenca");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { planConfigMap, plans } = useStorePlans();
 
   function validate() {
     if (!ownerName.trim()) return "Informe o nome do responsável.";
     if (!storeName.trim()) return "Informe o nome da loja.";
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return "E-mail inválido.";
     if (password.length < 6) return "Senha deve ter ao menos 6 caracteres.";
+    if (!acceptedTerms) return "Você deve aceitar os Termos de Uso.";
+    if (!acceptedPrivacy) return "Você deve aceitar a Política de Privacidade.";
     return null;
   }
 
@@ -66,6 +75,9 @@ export default function CadastroLogistaPage() {
 
     setLoading(true);
     try {
+      const normalizedPlan = normalizeStorePlan(selectedPlan);
+      const planDefaults = getPlanDefaults(normalizedPlan, planConfigMap);
+
       // cria usuário com role 'lojista'
       const cred = await signUp(email, password, "lojista");
       
@@ -84,7 +96,13 @@ export default function CadastroLogistaPage() {
                 id: uid,
                 email,
                 display_name: ownerName,
+                phone,
                 role: "lojista",
+                accepted_terms: true,
+                accepted_privacy: true,
+                terms_version: "v1.0",
+                privacy_version: "v1.0",
+                accepted_at: new Date().toISOString(),
               });
             if (profileError) {
               console.warn("Erro ao salvar profile no Supabase:", profileError);
@@ -98,6 +116,7 @@ export default function CadastroLogistaPage() {
                 store_name: storeName,
                 phone,
                 status: "pending",
+                ...planDefaults,
               });
             if (storeError) {
               console.warn("Erro ao salvar store no Supabase:", storeError);
@@ -113,6 +132,11 @@ export default function CadastroLogistaPage() {
               email,
               role: "lojista",
               name: ownerName,
+              phone,
+              accepted_terms: true,
+              accepted_privacy: true,
+              terms_version: "v1.0",
+              privacy_version: "v1.0",
               createdAt: new Date().toISOString(),
             });
 
@@ -123,6 +147,11 @@ export default function CadastroLogistaPage() {
               phone,
               ownerEmail: email,
               status: "pending",
+              plan: planDefaults.plan,
+              plan_status: planDefaults.plan_status,
+              product_limit: planDefaults.product_limit,
+              photo_limit: planDefaults.photo_limit,
+              priority_weight: planDefaults.priority_weight,
               createdAt: serverTimestamp(),
             });
           }
@@ -203,6 +232,24 @@ export default function CadastroLogistaPage() {
             </div>
 
             <div>
+              <label className="text-sm text-white/80 block mb-2">Plano desejado</label>
+              <select
+                value={selectedPlan}
+                onChange={(e) => setSelectedPlan(normalizeStorePlan(e.target.value))}
+                className="w-full rounded-md bg-white/10 border border-white/20 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+              >
+                {plans.map((plan) => (
+                  <option key={plan.id} value={plan.id} className="bg-[#0f2a66] text-white">
+                    {plan.name} ({plan.priceLabel})
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-white/70 mt-1">
+                Limites: até {getPlanDefaults(selectedPlan, planConfigMap).product_limit} produtos, {getPlanDefaults(selectedPlan, planConfigMap).photo_limit} fotos por produto.
+              </p>
+            </div>
+
+            <div>
               <label className="text-sm text-white/80 block mb-2">E-mail</label>
               <input
                 type="email"
@@ -226,19 +273,35 @@ export default function CadastroLogistaPage() {
               />
             </div>
 
-            {error && <div className="text-red-300 text-sm">{error}</div>}
-        {error && (
-          <div className="text-red-600 text-sm">
-            {error}{' '}
-            {error.includes('Entrar') || error.includes('uso') ? (
-              <>
-                <a href="/login" className="underline font-semibold">Entrar</a>
-                <span className="mx-1">ou</span>
-                <a href="/recuperar-senha" className="underline">Esqueci minha senha</a>
-              </>
-            ) : null}
-          </div>
-        )}
+            <div className="space-y-2 text-sm">
+              <label className="flex items-start gap-2">
+                <input type="checkbox" checked={acceptedTerms} onChange={(e) => setAcceptedTerms(e.target.checked)} className="mt-1" required />
+                <span>
+                  Li e aceito os{' '}
+                  <Link href="/termos-lojista" target="_blank" className="underline text-[#FDC500]">Termos de Uso</Link>
+                </span>
+              </label>
+              <label className="flex items-start gap-2">
+                <input type="checkbox" checked={acceptedPrivacy} onChange={(e) => setAcceptedPrivacy(e.target.checked)} className="mt-1" required />
+                <span>
+                  Li e aceito a{' '}
+                  <Link href="/politica-de-privacidade" target="_blank" className="underline text-[#FDC500]">Política de Privacidade</Link>
+                </span>
+              </label>
+            </div>
+
+            {error && (
+              <div className="text-red-300 text-sm">
+                {error}{' '}
+                {(error.includes('Entrar') || error.includes('uso')) ? (
+                  <>
+                    <a href="/login" className="underline font-semibold">Entrar</a>
+                    <span className="mx-1">ou</span>
+                    <a href="/recuperar-senha" className="underline">Esqueci minha senha</a>
+                  </>
+                ) : null}
+              </div>
+            )}
 
             <button
               type="submit"

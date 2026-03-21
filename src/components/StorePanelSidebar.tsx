@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
+import { resolveStoreLimits } from "@/lib/storePlans";
 
 type Props = {
   view: string;
@@ -25,10 +26,30 @@ export default function StorePanelSidebar({ view, setView, selectedStoreSlug, se
       try {
         if (!user) return;
         console.log('🔍 StorePanelSidebar: Buscando lojas para user.id:', user.id);
-        const { data, error } = await supabase
+        const selectWithPlans = 'id, slug, store_name, phone, address, status, category, logo_url, plan, plan_status, product_limit, photo_limit, priority_weight';
+        const selectLegacy = 'id, slug, store_name, phone, address, status, category, logo_url';
+
+        let data: any[] | null = null;
+        let error: any = null;
+
+        const withPlanResult = await supabase
           .from('stores')
-          .select('id, slug, store_name, phone, address, status, category, logo_url')
+          .select(selectWithPlans)
           .eq('owner_id', user.id);
+
+        data = withPlanResult.data as any[] | null;
+        error = withPlanResult.error;
+
+        // Fallback para bancos que ainda não receberam migration de planos
+        if (error) {
+          const legacyResult = await supabase
+            .from('stores')
+            .select(selectLegacy)
+            .eq('owner_id', user.id);
+
+          data = legacyResult.data as any[] | null;
+          error = legacyResult.error;
+        }
         
         if (error) {
           console.error('❌ Erro ao buscar lojas:', error);
@@ -88,6 +109,8 @@ export default function StorePanelSidebar({ view, setView, selectedStoreSlug, se
     const store = stores.find(s => s.slug === selectedStoreSlug);
     setSelectedStore(store || null);
   }, [selectedStoreSlug, stores]);
+
+  const limits = resolveStoreLimits(store);
 
   return (
     <aside className="w-64 flex flex-col gap-4">
@@ -220,6 +243,9 @@ export default function StorePanelSidebar({ view, setView, selectedStoreSlug, se
               <div className="font-semibold text-sm">{store.store_name}</div>
               <div className="text-xs text-blue-200">
                 {store.status === 'active' ? 'Ativa' : store.status === 'pending' ? 'Pendente' : 'Status: ' + store.status}
+              </div>
+              <div className="text-xs text-blue-100 mt-1">
+                Plano: {limits.plan} • Produtos: {limits.product_limit} • Fotos: {limits.photo_limit}
               </div>
             </div>
           </div>

@@ -4,8 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import StoreCard from "@/components/StoreCard";
 import { subscribeToAdminStores, type StoreDoc } from "@/lib/adminQueries";
 import externalStores from "@/data/externalStores";
+import { getPlanConfig, normalizeStorePlan } from "@/lib/storePlans";
+import { useStorePlans } from "@/lib/useStorePlans";
 
 export default function LojasPage() {
+  const { planConfigMap } = useStorePlans();
   const [stores, setStores] = useState<StoreDoc[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -45,7 +48,7 @@ export default function LojasPage() {
   }, [stores]);
 
   const filtered = useMemo(() => {
-    return (stores || []).filter((s: any) => {
+    const result = (stores || []).filter((s: any) => {
       const q = query.trim().toLowerCase();
       if (q) {
         const inName = ((s as any).storeName || (s as any).store_name || "").toLowerCase().includes(q);
@@ -56,7 +59,17 @@ export default function LojasPage() {
       if (location && (s as any).city && !( (s as any).city || "").toLowerCase().includes(location.toLowerCase())) return false;
       return true;
     });
-  }, [stores, query, category, location]);
+
+    return result.sort((a: any, b: any) => {
+      const aWeight = Number.isFinite(Number(a?.priority_weight))
+        ? Number(a.priority_weight)
+        : getPlanConfig(normalizeStorePlan(a?.plan), planConfigMap).priorityWeight;
+      const bWeight = Number.isFinite(Number(b?.priority_weight))
+        ? Number(b.priority_weight)
+        : getPlanConfig(normalizeStorePlan(b?.plan), planConfigMap).priorityWeight;
+      return bWeight - aWeight;
+    });
+  }, [stores, query, category, location, planConfigMap]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">

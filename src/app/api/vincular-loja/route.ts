@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getServerPlanDefaults } from '@/lib/storePlansServer';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -8,6 +9,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 export async function POST(req: Request) {
   try {
     const { userId } = await req.json();
+    const planDefaults = await getServerPlanDefaults('presenca');
     
     if (!userId) {
       return NextResponse.json({ error: 'userId required' }, { status: 400 });
@@ -22,6 +24,7 @@ export async function POST(req: Request) {
         category: 'varejo',
         owner_id: userId,
         status: 'approved',
+        ...planDefaults,
         created_at: new Date().toISOString()
       }
     ];

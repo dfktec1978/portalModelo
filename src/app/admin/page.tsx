@@ -104,6 +104,14 @@ export default function AdminIndex() {
         </Link>
 
         <Link
+          href="/admin/planos"
+          className="bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-6 transition"
+        >
+          <h3 className="font-bold text-lg mb-2 text-white">💳 Gerenciar Planos</h3>
+          <p className="text-gray-300 text-sm">Ajustar preços, limites e prioridade</p>
+        </Link>
+
+        <Link
           href="/admin/noticias"
           className="bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-6 transition"
         >

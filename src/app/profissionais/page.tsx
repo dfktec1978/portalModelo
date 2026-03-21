@@ -101,7 +101,12 @@ export default function ProfissionaisPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-3xl font-bold text-center text-[#003049]">Profissionais</h1>
+      <div className="flex items-center justify-center gap-3">
+        <h1 className="text-3xl font-bold text-center text-[#003049]">Profissionais</h1>
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
+          Grátis
+        </span>
+      </div>
 
       {/* Busca e Filtros */}
       <section>

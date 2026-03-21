@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `appointments` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`clientName` varchar(255) NOT NULL,\n\t`clientEmail` varchar(320) NOT NULL,\n\t`clientPhone` varchar(20) NOT NULL,\n\t`service` varchar(100) NOT NULL,\n\t`appointmentDate` timestamp NOT NULL,\n\t`notes` text,\n\t`googleCalendarEventId` varchar(255),\n\t`status` enum('pending','confirmed','cancelled') NOT NULL DEFAULT 'pending',\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `appointments_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user K5sCuN1Hm1ddyy7.root --database VqkfSibERzAYA52fmtLMmH --execute CREATE TABLE `appointments` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`clientName` varchar(255) NOT NULL,\n\t`clientEmail` varchar(320) NOT NULL,\n\t`clientPhone` varchar(20) NOT NULL,\n\t`service` varchar(100) NOT NULL,\n\t`appointmentDate` timestamp NOT NULL,\n\t`notes` text,\n\t`googleCalendarEventId` varchar(255),\n\t`status` enum('pending','confirmed','cancelled') NOT NULL DEFAULT 'pending',\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `appointments_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 267
+}

@@ -20,6 +20,7 @@ import {
   getDoc,
 } from 'firebase/firestore';
 import { supabase } from './supabaseClient';
+import { getPlanDefaults } from './storePlans';
 
 // Auto-detect backend
 const HAS_SUPABASE = !!supabase;
@@ -41,12 +42,26 @@ export type NewsDoc = {
 export type StoreDoc = {
   id: string;
   storeName?: string;
+  store_name?: string;
+  slug?: string;
+  description?: string;
+  category?: string;
+  city?: string;
+  state?: string;
+  logo?: string;
+  logo_url?: string;
+  external_url?: string;
   ownerUid?: string;
   ownerEmail?: string;
   ownerName?: string;
   phone?: string;
   address?: any;
   status?: string;
+  plan?: 'presenca' | 'destaque' | 'premium';
+  plan_status?: 'active' | 'pending' | 'canceled';
+  product_limit?: number;
+  photo_limit?: number;
+  priority_weight?: number;
   createdAt?: any;
   approvedAt?: any;
 };
@@ -286,14 +301,47 @@ export function subscribeToAdminStores(callback: (stores: StoreDoc[]) => void) {
         .catch(() => callback(arr));
     });
   } else {
-    // Supabase mode
-    const pollInterval = setInterval(async () => {
-      try {
-        const { data, error } = await supabase!
-          .from('stores')
-          .select(`
+    const selectWithPlans = `
             id,
             store_name,
+            slug,
+            description,
+            category,
+            city,
+            state,
+            logo,
+            logo_url,
+            external_url,
+            owner_id,
+            phone,
+            address,
+            status,
+            plan,
+            plan_status,
+            product_limit,
+            photo_limit,
+            priority_weight,
+            created_at,
+            approved_at,
+            profiles!owner_id (
+              id,
+              email,
+              display_name,
+              phone
+            )
+          `;
+
+    const selectLegacy = `
+            id,
+            store_name,
+            slug,
+            description,
+            category,
+            city,
+            state,
+            logo,
+            logo_url,
+            external_url,
             owner_id,
             phone,
             address,
@@ -306,68 +354,138 @@ export function subscribeToAdminStores(callback: (stores: StoreDoc[]) => void) {
               display_name,
               phone
             )
-          `)
+          `;
+
+    const normalizeStores = (rows: any[]) => rows.map((row: any) => ({
+      id: row.id,
+      storeName: row.store_name,
+      store_name: row.store_name,
+      slug: row.slug,
+      description: row.description,
+      category: row.category,
+      city: row.city,
+      state: row.state,
+      logo: row.logo,
+      logo_url: row.logo_url,
+      external_url: row.external_url,
+      ownerUid: row.owner_id,
+      ownerEmail: row.profiles?.email,
+      ownerName: row.profiles?.display_name,
+      phone: row.phone || row.profiles?.phone,
+      address: row.address,
+      status: row.status || 'pending',
+      plan: row.plan || 'presenca',
+      plan_status: row.plan_status || 'active',
+      product_limit: row.product_limit,
+      photo_limit: row.photo_limit,
+      priority_weight: row.priority_weight,
+      createdAt: row.created_at,
+      approvedAt: row.approved_at,
+    }));
+
+    const fetchStores = async () => {
+      const selectWithPlansNoProfile = `
+            id,
+            store_name,
+            slug,
+            description,
+            category,
+            city,
+            state,
+            logo,
+            logo_url,
+            external_url,
+            owner_id,
+            phone,
+            address,
+            status,
+            plan,
+            plan_status,
+            product_limit,
+            photo_limit,
+            priority_weight,
+            created_at,
+            approved_at
+          `;
+
+      const selectLegacyNoProfile = `
+            id,
+            store_name,
+            slug,
+            description,
+            category,
+            city,
+            state,
+            logo,
+            logo_url,
+            external_url,
+            owner_id,
+            phone,
+            address,
+            status,
+            created_at,
+            approved_at
+          `;
+
+      const attempts = [
+        selectWithPlans,
+        selectLegacy,
+        selectWithPlansNoProfile,
+        selectLegacyNoProfile,
+      ];
+
+      let lastError: any = null;
+      for (const querySelect of attempts) {
+        const result = await supabase!
+          .from('stores')
+          .select(querySelect)
           .order('created_at', { ascending: false });
 
+        if (!result.error) return result;
+        lastError = result.error;
+      }
+
+      return { data: null, error: lastError } as any;
+    };
+
+    const formatFetchError = (err: any) => {
+      if (!err) return 'erro desconhecido';
+      if (typeof err === 'string') return err;
+      if (err?.message) return err.message;
+      if (err?.details) return err.details;
+      try {
+        return JSON.stringify(err);
+      } catch {
+        return String(err);
+      }
+    };
+
+    // Supabase mode
+    const pollInterval = setInterval(async () => {
+      try {
+        const { data, error } = await fetchStores();
+
         if (!error && data) {
-          const normalized = data.map((row: any) => ({
-            id: row.id,
-            storeName: row.store_name,
-            ownerUid: row.owner_id,
-            ownerEmail: row.profiles?.email,
-            ownerName: row.profiles?.display_name,
-            phone: row.phone || row.profiles?.phone,
-            address: row.address,
-            status: row.status || 'pending',
-            createdAt: row.created_at,
-            approvedAt: row.approved_at,
-          }));
+          const normalized = normalizeStores(data as any[]);
           callback(normalized);
         } else if (error) {
-          console.error('Erro ao buscar lojas:', error);
+          console.warn('Aviso ao buscar lojas:', formatFetchError(error));
+          callback([]);
         }
       } catch (e) {
-        console.error('Erro ao buscar lojas:', e);
+        console.warn('Aviso ao buscar lojas:', formatFetchError(e));
+        callback([]);
       }
     }, 5000);
 
     // Initial fetch
-    supabase!
-      .from('stores')
-      .select(`
-        id,
-        store_name,
-        owner_id,
-        phone,
-        address,
-        status,
-        created_at,
-        approved_at,
-        profiles!owner_id (
-          id,
-          email,
-          display_name,
-          phone
-        )
-      `)
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
+    fetchStores().then(({ data, error }) => {
         if (!error && data) {
-          const normalized = data.map((row: any) => ({
-            id: row.id,
-            storeName: row.store_name,
-            ownerUid: row.owner_id,
-            ownerEmail: row.profiles?.email,
-            ownerName: row.profiles?.display_name,
-            phone: row.phone || row.profiles?.phone,
-            address: row.address,
-            status: row.status || 'pending',
-            createdAt: row.created_at,
-            approvedAt: row.approved_at,
-          }));
+          const normalized = normalizeStores(data as any[]);
           callback(normalized);
         } else if (error) {
-          console.error('Erro ao buscar lojas (initial fetch):', error);
+          console.warn('Aviso ao buscar lojas (initial fetch):', formatFetchError(error));
+          callback([]);
         }
       });
 
@@ -453,7 +571,13 @@ export async function updateStore(storeId: string, data: Partial<StoreDoc>) {
     if ((data as any).description !== undefined) updateData.description = (data as any).description;
     if ((data as any).external_url !== undefined) updateData.external_url = (data as any).external_url;
     if ((data as any).logo !== undefined) updateData.logo = (data as any).logo;
+    if ((data as any).logo_url !== undefined) updateData.logo_url = (data as any).logo_url;
     if ((data as any).slug !== undefined) updateData.slug = (data as any).slug;
+    if ((data as any).plan !== undefined) updateData.plan = (data as any).plan;
+    if ((data as any).plan_status !== undefined) updateData.plan_status = (data as any).plan_status;
+    if ((data as any).product_limit !== undefined) updateData.product_limit = (data as any).product_limit;
+    if ((data as any).photo_limit !== undefined) updateData.photo_limit = (data as any).photo_limit;
+    if ((data as any).priority_weight !== undefined) updateData.priority_weight = (data as any).priority_weight;
 
     const { error } = await supabase!.from('stores').update(updateData).eq('id', storeId);
     if (error) throw error;
@@ -471,6 +595,7 @@ export async function createStore(storeId: string, data: Partial<StoreDoc>) {
     await setDoc(storeRef, { ...(data as any), createdAt: serverTimestamp() });
     return { id: storeId };
   } else {
+    const planDefaults = getPlanDefaults((data as any).plan);
     const insertData: any = {
       id: storeId,
       store_name: (data as any).storeName || (data as any).store_name || null,
@@ -480,6 +605,11 @@ export async function createStore(storeId: string, data: Partial<StoreDoc>) {
       logo: (data as any).logo || null,
       status: (data as any).status || 'approved',
       owner_id: (data as any).ownerUid || null,
+      plan: (data as any).plan || planDefaults.plan,
+      plan_status: (data as any).plan_status || planDefaults.plan_status,
+      product_limit: (data as any).product_limit ?? planDefaults.product_limit,
+      photo_limit: (data as any).photo_limit ?? planDefaults.photo_limit,
+      priority_weight: (data as any).priority_weight ?? planDefaults.priority_weight,
     };
     const { data: result, error } = await supabase!.from('stores').insert([insertData]).select();
     if (error) throw error;

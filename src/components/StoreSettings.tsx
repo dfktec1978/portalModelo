@@ -3,12 +3,15 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import InfoBanner from '@/components/InfoBanner'
+import { getPlanConfig, getPlanDefaults, getPlanTransition, normalizeStorePlan } from '@/lib/storePlans'
+import { useStorePlans } from '@/lib/useStorePlans'
 
 type Props = {
   store: any
+  onStoreUpdated?: (store: any) => void
 }
 
-export default function StoreSettings({ store }: Props) {
+export default function StoreSettings({ store, onStoreUpdated }: Props) {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [form, setForm] = useState({
@@ -20,10 +23,18 @@ export default function StoreSettings({ store }: Props) {
     state: '',
     zipcode: '',
     delivery_fee: '',
-    is_active: true
+    is_active: true,
+    plan: 'presenca',
+    plan_status: 'active'
   })
   const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle')
   const [slugMessage, setSlugMessage] = useState('')
+  const { planConfigMap, plans } = useStorePlans()
+  const currentPlan = normalizeStorePlan(store?.plan)
+  const selectedPlan = normalizeStorePlan(form.plan)
+  const selectedPlanConfig = getPlanConfig(selectedPlan, planConfigMap)
+  const selectedPlanDefaults = getPlanDefaults(selectedPlan, planConfigMap)
+  const planTransition = getPlanTransition(currentPlan, selectedPlan, form.plan_status, planConfigMap)
 
   useEffect(() => {
     if (store) {
@@ -36,7 +47,9 @@ export default function StoreSettings({ store }: Props) {
         state: store.state || '',
         zipcode: store.zipcode || '',
         delivery_fee: store.delivery_fee || '',
-        is_active: store.is_active !== false
+        is_active: store.is_active !== false,
+        plan: normalizeStorePlan(store.plan),
+        plan_status: store.plan_status || 'active'
       })
       setSlugStatus('idle')
       setSlugMessage('')
@@ -138,30 +151,62 @@ export default function StoreSettings({ store }: Props) {
         return
       }
 
-      const { data, error } = await supabase
+      const updatePayloadBase = {
+        store_name: form.store_name,
+        slug: normalizedSlug,
+        phone: form.phone,
+        address: form.address || null,
+        city: form.city || null,
+        state: form.state || null,
+        zipcode: form.zipcode || null,
+        delivery_fee: form.delivery_fee || null,
+        is_active: form.is_active
+      }
+
+      const updatePayloadWithPlan = {
+        ...updatePayloadBase,
+        plan: planTransition.plan,
+        plan_status: planTransition.plan_status,
+        product_limit: planTransition.product_limit,
+        photo_limit: planTransition.photo_limit,
+        priority_weight: planTransition.priority_weight
+      }
+
+      let usedLegacyFallback = false
+      let { data, error } = await supabase
         .from('stores')
-        .update({
-          store_name: form.store_name,
-          slug: normalizedSlug,
-          phone: form.phone,
-          address: form.address || null,
-          city: form.city || null,
-          state: form.state || null,
-          zipcode: form.zipcode || null,
-          delivery_fee: form.delivery_fee || null,
-          is_active: form.is_active
-        })
+        .update(updatePayloadWithPlan)
         .eq('id', store.id)
         .select()
 
+      if (error && /column .* does not exist|schema cache/i.test(String(error.message || ''))) {
+        usedLegacyFallback = true
+        const fallbackResult = await supabase
+          .from('stores')
+          .update(updatePayloadBase)
+          .eq('id', store.id)
+          .select()
+
+        data = fallbackResult.data
+        error = fallbackResult.error
+      }
+
       if (error) throw error
 
-      setMessage('Configurações salvas com sucesso!')
+      if (usedLegacyFallback && planTransition.type !== 'none') {
+        setMessage('Dados básicos salvos, mas seu banco ainda não possui campos de plano. Execute a migration para aplicar o plano em todo o portal.')
+      } else if (planTransition.type === 'upgrade') {
+        setMessage('Configurações salvas com sucesso! O novo plano já foi aplicado à loja e seus dados foram mantidos.')
+      } else if (planTransition.type === 'downgrade') {
+        setMessage('Configurações salvas com sucesso! O downgrade já foi aplicado sem perda dos dados da loja.')
+      } else {
+        setMessage('Configurações salvas com sucesso!')
+      }
       setTimeout(() => setMessage(''), 3000)
       
       // Atualizar o store local se necessário
       if (data && data[0]) {
-        // Opcional: callback para atualizar estado pai
+        onStoreUpdated?.(data[0])
       }
     } catch (error: any) {
       console.error('Erro ao salvar:', error)
@@ -219,6 +264,43 @@ export default function StoreSettings({ store }: Props) {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Ex: Pizza da Vovó"
               />
+            </div>
+            {/* Seleção de Plano */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Plano da Loja
+              </label>
+              <select
+                value={form.plan}
+                onChange={(e) => {
+                  const plan = normalizeStorePlan(e.target.value)
+                  setForm({
+                    ...form,
+                    plan
+                  })
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                {plans.map((plan) => (
+                  <option key={plan.id} value={plan.id}>{plan.name} ({plan.priceLabel})</option>
+                ))}
+              </select>
+              <div className="mt-2 rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-900">
+                <div className="font-semibold">{selectedPlanConfig.name} • {selectedPlanConfig.priceLabel}</div>
+                <div className="mt-1">Produtos permitidos: {selectedPlanDefaults.product_limit}</div>
+                <div>Fotos por produto: {selectedPlanDefaults.photo_limit}</div>
+                <div>Prioridade na vitrine: {selectedPlanDefaults.priority_weight}</div>
+                {planTransition.type !== 'none' && (
+                  <div className="mt-2 font-medium">
+                    {planTransition.type === 'upgrade'
+                      ? 'Mudança detectada: upgrade com aplicação imediata no portal.'
+                      : 'Mudança detectada: downgrade com aplicação imediata, sem excluir dados.'}
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Escolha o plano conforme sua necessidade. Mudanças de plano podem exigir aprovação manual.
+              </p>
             </div>
 
             <div>
@@ -402,7 +484,9 @@ export default function StoreSettings({ store }: Props) {
                   state: store.state || '',
                   zipcode: store.zipcode || '',
                   delivery_fee: store.delivery_fee || '',
-                  is_active: store.is_active !== false
+                  is_active: store.is_active !== false,
+                  plan: normalizeStorePlan(store.plan),
+                  plan_status: store.plan_status || 'active'
                 })
                 setSlugStatus('idle')
                 setSlugMessage('')

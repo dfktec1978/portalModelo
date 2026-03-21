@@ -105,6 +105,21 @@ export default function StoreOrdersModule({ store }: Props) {
     return 'pending'
   }
 
+  const getStatusInfo = (status?: string | null) => {
+    const normalized = normalizeStatus(status)
+    return STATUS_MAP[normalized as keyof typeof STATUS_MAP] || {
+      label: normalized,
+      color: 'bg-gray-100 text-gray-800',
+      emoji: 'ℹ️'
+    }
+  }
+
+  const getAllowedTransitions = (status?: string | null) => {
+    const normalized = normalizeStatus(status)
+    const transitions = STATUS_TRANSITIONS[normalized as keyof typeof STATUS_TRANSITIONS] || []
+    return [normalized, ...transitions].filter((v, i, arr) => arr.indexOf(v) === i)
+  }
+
   useEffect(() => {
     if (store?.id) {
       fetchOrders()
@@ -563,16 +578,12 @@ export default function StoreOrdersModule({ store }: Props) {
                         onClick={(e) => e.stopPropagation()}
                         className="px-3 py-1 border rounded-lg text-sm"
                       >
-                        {(() => {
-                          const transitions = STATUS_TRANSITIONS[normalizedStatus as keyof typeof STATUS_TRANSITIONS] || []
-                          return [normalizedStatus, ...transitions]
-                        })()
-                          .filter((v, i, arr) => arr.indexOf(v) === i)
-                          .map((status) => {
+                        {getAllowedTransitions(normalizedStatus).map((status) => {
                           const isFinalizedBlocked = isRetail && status === 'finalized' && formatPaymentStatus(order.payment_status) !== 'Pago'
+                          const optionStatusInfo = getStatusInfo(status)
                           return (
                             <option key={status} value={status} disabled={isFinalizedBlocked}>
-                              {STATUS_MAP[status as keyof typeof STATUS_MAP].emoji} {STATUS_MAP[status as keyof typeof STATUS_MAP].label}
+                              {optionStatusInfo.emoji} {optionStatusInfo.label}
                             </option>
                           )
                         })}
@@ -728,8 +739,10 @@ export default function StoreOrdersModule({ store }: Props) {
 
               {/* Ações */}
               <div className="flex gap-2 flex-wrap">
-                {STATUS_TRANSITIONS[selectedOrder.status as keyof typeof STATUS_TRANSITIONS].map((nextStatus) => {
-                  const nextStatusInfo = STATUS_MAP[nextStatus as keyof typeof STATUS_MAP]
+                {getAllowedTransitions(selectedOrder.status)
+                  .filter((status) => status !== normalizeStatus(selectedOrder.status))
+                  .map((nextStatus) => {
+                  const nextStatusInfo = getStatusInfo(nextStatus)
                   return (
                     <button
                       key={nextStatus}

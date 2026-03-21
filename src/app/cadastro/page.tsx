@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
+import { useStorePlans } from "@/lib/useStorePlans";
+import { getPlanDefaults, normalizeStorePlan } from "@/lib/storePlans";
 
 export default function CadastroPage() {
   const router = useRouter();
@@ -31,12 +33,14 @@ export default function CadastroPage() {
   const [storeName, setStoreName] = useState(""); // Para lojista
   const [ownerName, setOwnerName] = useState(""); // Para lojista
   const [storeCategory, setStoreCategory] = useState<"varejo" | "alimentacao">("varejo"); // Categoria da loja
+  const [selectedPlan, setSelectedPlan] = useState<"presenca" | "destaque" | "premium">("presenca");
 
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const { planConfigMap, plans } = useStorePlans();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -55,7 +59,7 @@ export default function CadastroPage() {
     }
 
     if (!acceptedTerms) {
-      setError("Você deve aceitar os Termos de Uso");
+      setError("Você deve aceitar os Termos de Uso e a Política de Privacidade");
       return;
     }
 
@@ -147,7 +151,9 @@ export default function CadastroPage() {
           role: userType, // CRÍTICO: garantir que o tipo está correto
           status: userType === "cliente" ? "active" : "pending",
           accepted_terms: true,
+          accepted_privacy: true,
           terms_version: "v1.0",
+          privacy_version: "v1.0",
           accepted_at: new Date().toISOString(),
         };
 
@@ -172,6 +178,8 @@ export default function CadastroPage() {
         // Para lojista, criar entrada na tabela stores
         if (userType === "lojista") {
           console.log('🏪 Criando loja:', storeName);
+          const normalizedPlan = normalizeStorePlan(selectedPlan);
+          const planDefaults = getPlanDefaults(normalizedPlan, planConfigMap);
           
           const storeSlug = storeName
             .toLowerCase()
@@ -192,6 +200,7 @@ export default function CadastroPage() {
               zipcode,
               category: storeCategory,
               status: "pending",
+              ...planDefaults,
             });
 
           if (storeError) {
@@ -221,6 +230,7 @@ export default function CadastroPage() {
       setStoreName("");
       setOwnerName("");
       setStoreCategory("varejo");
+      setSelectedPlan("presenca");
       setAcceptedTerms(false);
 
       // Redirecionar
@@ -409,6 +419,27 @@ export default function CadastroPage() {
                       disabled={loading}
                     />
                   </div>
+                  <div>
+                    <label htmlFor="selectedPlan" className="block text-sm font-medium mb-1">
+                      Plano desejado
+                    </label>
+                    <select
+                      id="selectedPlan"
+                      value={selectedPlan}
+                      onChange={(e) => setSelectedPlan(normalizeStorePlan(e.target.value))}
+                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded text-white focus:outline-none focus:border-white/50"
+                      disabled={loading}
+                    >
+                      {plans.map((plan) => (
+                        <option key={plan.id} value={plan.id} className="bg-[#003049] text-white">
+                          {plan.name} ({plan.priceLabel})
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Limites do plano: {getPlanDefaults(selectedPlan, planConfigMap).product_limit} produtos e {getPlanDefaults(selectedPlan, planConfigMap).photo_limit} fotos por produto.
+                    </p>
+                  </div>
                 </>
               )}
 
@@ -582,7 +613,14 @@ export default function CadastroPage() {
                   >
                     Termos de Uso
                   </Link>{" "}
-                  e a Política de Privacidade
+                  e a{" "}
+                  <Link
+                    href="/politica-de-privacidade"
+                    target="_blank"
+                    className="text-[#FDC500] hover:underline"
+                  >
+                    Política de Privacidade
+                  </Link>
                 </label>
               </div>
 

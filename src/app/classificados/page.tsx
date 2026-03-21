@@ -65,7 +65,12 @@ export default function ClassifiedsPage() {
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Classificados</h1>
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-3xl font-bold text-gray-900">Classificados</h1>
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
+              Grátis
+            </span>
+          </div>
           <p className="text-gray-600">Encontre produtos e serviços locais</p>
         </div>
 

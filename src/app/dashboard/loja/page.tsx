@@ -75,14 +75,24 @@ export default function LojaDashboardPage() {
           {view === 'orders' && <StoreOrdersModule store={selectedStore} />}
           {view === 'finance' && <StoreFinanceModule store={selectedStore} />}
           {view === 'appearance' && <StoreAppearance store={selectedStore} />}
-          {view === 'settings' && <StoreSettings store={selectedStore} />}
+          {view === 'settings' && (
+            <StoreSettings
+              store={selectedStore}
+              onStoreUpdated={(updatedStore) => {
+                setSelectedStore(updatedStore);
+                if (updatedStore?.category === 'varejo' || updatedStore?.category === 'alimentacao') {
+                  setCategory(updatedStore.category);
+                }
+              }}
+            />
+          )}
 
           {view === 'products' && category === 'varejo' && (
-            <StoreProductsModule storeSlug={selectedStore?.slug || selectedStore?.id} />
+            <StoreProductsModule storeSlug={selectedStore?.slug || selectedStore?.id} store={selectedStore} />
           )}
 
           {view === 'menu' && category === 'alimentacao' && (
-            <StoreMenuModule storeSlug={selectedStore?.slug || selectedStore?.id} />
+            <StoreMenuModule storeSlug={selectedStore?.slug || selectedStore?.id} store={selectedStore} />
           )}
         </main>
       </div>

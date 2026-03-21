@@ -33,6 +33,7 @@ function buildUtmUrl(store: StoreCardProps["store"]) {
 export default function StoreCard({ store, internalHref }: StoreCardProps) {
   const visitUrl = buildUtmUrl(store);
   const href = internalHref || undefined;
+  const isExternalVisitUrl = !!visitUrl && /^https?:\/\//i.test(visitUrl);
 
   const renderLogo = () => {
     if (!store?.logo) return (
@@ -93,8 +94,8 @@ export default function StoreCard({ store, internalHref }: StoreCardProps) {
         {href || visitUrl ? (
           <a
             href={href || visitUrl}
-            target={(href || (visitUrl && !visitUrl.startsWith('/'))) ? undefined : "_blank"}
-            rel={(href || (visitUrl && !visitUrl.startsWith('/'))) ? undefined : "noopener noreferrer"}
+            target={href ? undefined : isExternalVisitUrl ? "_blank" : undefined}
+            rel={href ? undefined : isExternalVisitUrl ? "noopener noreferrer" : undefined}
             className="inline-block px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition"
           >
             Visitar Loja
