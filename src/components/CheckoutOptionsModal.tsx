@@ -92,8 +92,6 @@ export default function CheckoutOptionsModal({
   const [clientData, setClientData] = useState<{ name: string; email: string; phone: string } | null>(null)
   const [loadingClient, setLoadingClient] = useState(false)
 
-  if (!isOpen) return null
-
   useEffect(() => {
     const loadUserData = async () => {
       try {
@@ -129,17 +127,20 @@ export default function CheckoutOptionsModal({
             email: profile.email || user.email || '',
             phone: profile.phone || ''
           })
-          if (profile.address && !address) {
-            const parts = [
-              profile.address,
-              profile.number ? `nº ${profile.number}` : null,
-              profile.neighborhood ? profile.neighborhood : null,
-              profile.city ? profile.city : null,
-              profile.state ? profile.state : null,
-              profile.zipcode ? `CEP ${profile.zipcode}` : null,
-              profile.complement ? profile.complement : null
-            ].filter(Boolean)
-            setAddress(parts.join(', '))
+          if (profile.address) {
+            setAddress((prev) => {
+              if (prev) return prev
+              const parts = [
+                profile.address,
+                profile.number ? `nº ${profile.number}` : null,
+                profile.neighborhood ? profile.neighborhood : null,
+                profile.city ? profile.city : null,
+                profile.state ? profile.state : null,
+                profile.zipcode ? `CEP ${profile.zipcode}` : null,
+                profile.complement ? profile.complement : null
+              ].filter(Boolean)
+              return parts.join(', ')
+            })
           }
         }
       } catch {
@@ -151,6 +152,8 @@ export default function CheckoutOptionsModal({
 
     loadUserData()
   }, [])
+
+  if (!isOpen) return null
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

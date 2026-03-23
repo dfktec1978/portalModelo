@@ -59,7 +59,7 @@ begin
 		) then
 			alter table public.stores
 				add constraint stores_plan_check
-					check (plan in ('presenca', 'destaque', 'premium'));
+					check (plan in ('presenca', 'landingpage', 'destaque', 'premium'));
 		end if;
 
 		if not exists (

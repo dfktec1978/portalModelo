@@ -107,6 +107,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <h3 className="font-bold text-lg mb-2">👤 Usuários</h3>
                 <p className="text-gray-400 text-sm">Gerenciar usuários</p>
               </Link>
+              <Link href="/admin/vitrines" className="block bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-4 transition">
+                <h3 className="font-bold text-lg mb-2">🧩 Vitrines</h3>
+                <p className="text-gray-400 text-sm">Planos Grátis e LandingPage</p>
+              </Link>
+              <Link href="/admin/cobrancas" className="block bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-4 transition">
+                <h3 className="font-bold text-lg mb-2">💰 Cobranças</h3>
+                <p className="text-gray-400 text-sm">Boletos e mensalidades</p>
+              </Link>
               <Link href="/admin/configuracoes" className="block bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-4 transition">
                 <h3 className="font-bold text-lg mb-2">⚙️ Configurações</h3>
                 <p className="text-gray-400 text-sm">Configurações do sistema</p>

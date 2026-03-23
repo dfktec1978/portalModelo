@@ -36,6 +36,7 @@ type OrderData = {
   payment_method: string
   payment_status: string
   pix_qr_code?: string
+  pix_qr_code_url?: string
   pix_copy_paste?: string
 }
 
@@ -301,31 +302,60 @@ export function useCheckout() {
 
         // Se Pix, gerar QR Code
         if (effectivePayment.method === 'pix' && effectivePayment.storePixKey) {
-          const { generatePixQrCode } = await import('./pixService')
-          const pixData = generatePixQrCode(
-            effectivePayment.storePixKey,
-            total,
-            data.id
-          )
-
-          // Atualizar pedido com dados do Pix
-          const { error: updateError } = await supabase
-            .from('orders')
-            .update({
-              pix_qr_code: pixData.pixQrCode,
-              pix_copy_paste: pixData.pixCopyPaste
+          try {
+            const pixResponse = await fetch('/api/pix/charge', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                orderId: data.id,
+                storeId,
+                amount: total,
+                storePixKey: effectivePayment.storePixKey,
+                customerName: clientData.name,
+                customerEmail: clientData.email,
+              }),
             })
-            .eq('id', data.id)
 
-          if (updateError && updateError.code !== 'PGRST204') throw updateError
+            if (!pixResponse.ok) {
+              const errorBody = await pixResponse.text()
+              throw new Error(errorBody || 'Falha ao criar cobrança Pix via API')
+            }
 
-          // Retornar com dados do Pix
-          data.pix_qr_code = pixData.pixQrCode
-          data.pix_copy_paste = pixData.pixCopyPaste
+            const pixJson = await pixResponse.json()
+            const charge = pixJson?.charge
+
+            data.pix_qr_code = charge?.pixQrCode || data.pix_qr_code
+            data.pix_qr_code_url = charge?.pixQrCodeUrl || data.pix_qr_code_url
+            data.pix_copy_paste = charge?.pixCopyPaste || data.pix_copy_paste
+          } catch (pixApiError) {
+            console.warn('Falha na API Pix, aplicando fallback manual:', pixApiError)
+
+            const { generatePixQrCode } = await import('./pixService')
+            const pixData = generatePixQrCode(
+              effectivePayment.storePixKey,
+              total,
+              data.id
+            )
+
+            const { error: updateError } = await supabase
+              .from('orders')
+              .update({
+                pix_qr_code: pixData.pixQrCode,
+                pix_copy_paste: pixData.pixCopyPaste
+              })
+              .eq('id', data.id)
+
+            if (updateError && updateError.code !== 'PGRST204') throw updateError
+
+            data.pix_qr_code = pixData.pixQrCode
+            data.pix_copy_paste = pixData.pixCopyPaste
+          }
         }
 
         setOrderData(data)
-        setCurrentStep('confirmed')
+        setCurrentStep(effectivePayment.method === 'pix' ? 'pix' : 'confirmed')
 
         return data
       } catch (err: any) {

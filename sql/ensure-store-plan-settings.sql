@@ -9,7 +9,7 @@ create table if not exists public.store_plan_settings (
   photo_limit integer not null default 10,
   priority_weight integer not null default 1,
   updated_at timestamptz not null default now(),
-  constraint store_plan_settings_id_check check (id in ('presenca', 'destaque', 'premium')),
+  constraint store_plan_settings_id_check check (id in ('presenca', 'landingpage', 'destaque', 'premium')),
   constraint store_plan_settings_product_limit_check check (product_limit >= 0),
   constraint store_plan_settings_photo_limit_check check (photo_limit >= 0),
   constraint store_plan_settings_priority_weight_check check (priority_weight >= 0)

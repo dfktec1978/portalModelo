@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { useRouter, useSearchParams, useParams } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import CheckoutFlow from '@/components/CheckoutFlow'
+import { supabase } from '@/lib/supabaseClient'
 
 type CartItem = {
   id: string
@@ -17,30 +18,46 @@ type CartItem = {
 export default function CheckoutPage() {
   const router = useRouter()
   const params = useParams()
-  const searchParams = useSearchParams()
-  const storeId = params?.slug as string
+  const storeSlug = params?.slug as string
 
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [cartTotal, setCartTotal] = useState(0)
+  const [storeId, setStoreId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
-  // Carregar carrinho do sessionStorage ou localStorage
+  // Carregar dados da loja e carrinho
   useEffect(() => {
-    if (!storeId) {
+    if (!storeSlug) {
       setNotFound(true)
       setLoading(false)
       return
     }
 
-    // Tentar carregar do localStorage primeiro
-    try {
-      const savedCart = localStorage.getItem(`cart_${storeId}`)
-      if (savedCart) {
+    const loadCheckoutData = async () => {
+      try {
+        const { data: storeData, error: storeError } = await supabase
+          .from('stores')
+          .select('id, slug')
+          .eq('slug', storeSlug)
+          .single()
+
+        if (storeError || !storeData?.id) {
+          setNotFound(true)
+          return
+        }
+
+        setStoreId(storeData.id)
+
+        const savedCart = localStorage.getItem(`cart_${storeData.id}`)
+        if (!savedCart) {
+          setNotFound(true)
+          return
+        }
+
         const items = JSON.parse(savedCart)
         setCartItems(items)
 
-        // Calcular total
         const total = items.reduce((sum: number, item: CartItem) => {
           let itemTotal = item.price * item.quantity
           if (item.additionals) {
@@ -50,16 +67,16 @@ export default function CheckoutPage() {
         }, 0)
 
         setCartTotal(total)
-      } else {
+      } catch (err) {
+        console.error('Erro ao carregar checkout:', err)
         setNotFound(true)
+      } finally {
+        setLoading(false)
       }
-    } catch (err) {
-      console.error('Erro ao carregar carrinho:', err)
-      setNotFound(true)
-    } finally {
-      setLoading(false)
     }
-  }, [storeId])
+
+    loadCheckoutData()
+  }, [storeSlug])
 
   const handleCheckoutComplete = (orderId: string) => {
     // Limpar carrinho
@@ -67,7 +84,7 @@ export default function CheckoutPage() {
       localStorage.removeItem(`cart_${storeId}`)
     }
     // Redirecionar para página de sucesso
-    router.push(`/lojas/${storeId}/pedido/${orderId}`)
+    router.push(`/lojas/${storeSlug}/pedido/${orderId}`)
   }
 
   const handleCheckoutCancel = () => {

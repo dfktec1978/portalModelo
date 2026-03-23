@@ -9,6 +9,8 @@ import StoreOverview from "@/components/StoreOverview";
 import StoreOrdersModule from "@/components/StoreOrdersModule";
 import StoreFinanceModule from "@/components/StoreFinanceModule";
 import StoreSettings from "@/components/StoreSettings";
+import StorePaymentSettings from "@/components/StorePaymentSettings";
+import StoreLandingProfileSettings from "@/components/StoreLandingProfileSettings";
 import StoreModuleSchedule from "@/components/StoreModuleSchedule";
 import StoreModuleStock from "@/components/StoreModuleStock";
 import StoreModuleAdditionals from "@/components/StoreModuleAdditionals";
@@ -26,7 +28,7 @@ export default function DashboardPage() {
   const { profile, loading: profileLoading } = useProfile();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [view, setView] = useState<'overview'|'orders'|'finance'|'appearance'|'settings'|'products'|'menu'|'profile'|'schedule'|'stock'|'additionals'|'categories'|'pizza-flavors'|'variants'>('overview');
+  const [view, setView] = useState<'overview'|'orders'|'finance'|'appearance'|'settings'|'payments'|'products'|'menu'|'profile'|'schedule'|'stock'|'additionals'|'categories'|'pizza-flavors'|'variants'|'landing-profile'>('overview');
   const [selectedStoreSlug, setSelectedStoreSlug] = useState<string | null>(null);
   const [store, setStore] = useState<any>(null);
   const [stores, setStores] = useState<Array<any>>([]);
@@ -74,7 +76,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const paramView = searchParams?.get('view');
     if (!paramView) return;
-    const allowedViews = ['overview','orders','finance','appearance','settings','products','menu','profile','schedule','stock','additionals','categories','pizza-flavors','variants'];
+    const allowedViews = ['overview','orders','finance','appearance','settings','products','menu','profile','schedule','stock','additionals','categories','pizza-flavors','variants','landing-profile'];
     if (allowedViews.includes(paramView)) {
       setView(paramView as any);
     }
@@ -180,6 +182,10 @@ export default function DashboardPage() {
       setStore(null);
       return;
     }
+    if (!user?.id) {
+      setStore(null);
+      return;
+    }
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(selectedStoreSlug);
     (async () => {
       try {
@@ -187,15 +193,20 @@ export default function DashboardPage() {
         if (local && mounted) {
           setStore(local);
         }
-        // Buscar loja por ID (stores não tem coluna slug)
-        const query = supabase
-          .from('stores')
-          .select('*')
-          .eq('slug', selectedStoreSlug);
-
+        // Buscar loja sempre filtrando por owner_id para evitar colisão de slug entre lojistas
         const { data } = isUuid
-          ? await query.or(`id.eq.${selectedStoreSlug}`).maybeSingle()
-          : await query.maybeSingle();
+          ? await supabase
+              .from('stores')
+              .select('*')
+              .eq('id', selectedStoreSlug)
+              .eq('owner_id', user.id)
+              .maybeSingle()
+          : await supabase
+              .from('stores')
+              .select('*')
+              .eq('slug', selectedStoreSlug)
+              .eq('owner_id', user.id)
+              .maybeSingle();
         
         if (!mounted) return;
         const st = (data as any) || null;
@@ -211,7 +222,7 @@ export default function DashboardPage() {
       }
     })();
     return () => { mounted = false; };
-  }, [selectedStoreSlug, stores]);
+  }, [selectedStoreSlug, stores, user?.id]);
 
   const createDemoStore = async () => {
     if (!user || creatingStore) return;
@@ -450,6 +461,12 @@ export default function DashboardPage() {
                 )}
                 {view === 'settings' && (
                   <StoreSettings store={store} />
+                )}
+                {view === 'payments' && (
+                  <StorePaymentSettings store={store} />
+                )}
+                {view === 'landing-profile' && ['landingpage', 'destaque', 'premium'].includes(String(store?.plan || '').toLowerCase()) && (
+                  <StoreLandingProfileSettings store={store} />
                 )}
                 {view === 'schedule' && (
                   <StoreModuleSchedule store={store} />

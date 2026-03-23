@@ -8,7 +8,7 @@ import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 import { useStorePlans } from "@/lib/useStorePlans";
-import { getPlanDefaults, normalizeStorePlan } from "@/lib/storePlans";
+import { getPlanDefaults, normalizeStorePlan, type StorePlan } from "@/lib/storePlans";
 
 const HAS_SUPABASE =
   typeof process.env.NEXT_PUBLIC_SUPABASE_URL !== "undefined" &&
@@ -23,7 +23,7 @@ export default function CadastroLogistaPage() {
   const [storeName, setStoreName] = useState("");
   const [ownerName, setOwnerName] = useState("");
   const [phone, setPhone] = useState("");
-  const [selectedPlan, setSelectedPlan] = useState<"presenca" | "destaque" | "premium">("presenca");
+  const [selectedPlan, setSelectedPlan] = useState<StorePlan>("presenca");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [error, setError] = useState<string | null>(null);

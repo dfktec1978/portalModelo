@@ -29,17 +29,42 @@ type Order = {
 export default function PedidoPage() {
   const router = useRouter()
   const params = useParams()
-  const storeId = params?.slug as string
+  const storeParam = params?.slug as string
   const orderId = params?.orderId as string
 
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [resolvedStoreId, setResolvedStoreId] = useState<string | null>(null)
   const [storeSlug, setStoreSlug] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!storeId || !orderId) return
+    if (!storeParam) return
+
+    const resolveStore = async () => {
+      const { data } = await supabase
+        .from('stores')
+        .select('id, slug')
+        .or(`id.eq.${storeParam},slug.eq.${storeParam}`)
+        .maybeSingle()
+
+      if (data?.id) {
+        setResolvedStoreId(data.id)
+      } else {
+        setResolvedStoreId(storeParam)
+      }
+
+      if (data?.slug) {
+        setStoreSlug(data.slug)
+      }
+    }
+
+    resolveStore()
+  }, [storeParam])
+
+  useEffect(() => {
+    if (!resolvedStoreId || !orderId) return
 
     const fetchOrder = async () => {
       try {
@@ -47,7 +72,7 @@ export default function PedidoPage() {
           .from('orders')
           .select('*')
           .eq('id', orderId)
-          .eq('store_id', storeId)
+          .eq('store_id', resolvedStoreId)
           .single()
 
         if (err) {
@@ -67,25 +92,7 @@ export default function PedidoPage() {
     }
 
     fetchOrder()
-  }, [storeId, orderId])
-
-  useEffect(() => {
-    if (!storeId) return
-
-    const fetchStoreSlug = async () => {
-      const { data } = await supabase
-        .from('stores')
-        .select('slug')
-        .eq('id', storeId)
-        .maybeSingle()
-
-      if (data?.slug) {
-        setStoreSlug(data.slug)
-      }
-    }
-
-    fetchStoreSlug()
-  }, [storeId])
+  }, [resolvedStoreId, orderId])
 
   const copyPixKey = () => {
     if (order?.pix_transaction_id) {
@@ -114,7 +121,7 @@ export default function PedidoPage() {
           <h1 className="text-2xl font-bold text-red-600 mb-2">Erro ao Carregar Pedido</h1>
           <p className="text-gray-600 mb-6">{error || 'Pedido não encontrado'}</p>
           <Link
-            href={`/lojas/${storeSlug || storeId}`}
+            href={`/lojas/${storeSlug || storeParam}`}
             className="inline-block px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors"
           >
             Voltar para Loja

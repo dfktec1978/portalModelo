@@ -1,4 +1,4 @@
-export type StorePlan = 'presenca' | 'destaque' | 'premium';
+export type StorePlan = 'presenca' | 'landingpage' | 'destaque' | 'premium';
 export type PlanStatus = 'active' | 'pending' | 'canceled';
 
 export type PlanConfig = {
@@ -11,6 +11,8 @@ export type PlanConfig = {
 };
 
 export type PlanConfigMap = Record<StorePlan, PlanConfig>;
+
+export const PLAN_ORDER: StorePlan[] = ['presenca', 'landingpage', 'destaque', 'premium'];
 
 export type PlanConfigInput = Partial<PlanConfig> & {
   id?: string | null;
@@ -25,6 +27,14 @@ export const PLAN_CONFIG: PlanConfigMap = {
     id: 'presenca',
     name: 'Plano Presença',
     priceLabel: 'Grátis',
+    productLimit: 0,
+    photoLimit: 10,
+    priorityWeight: 1,
+  },
+  landingpage: {
+    id: 'landingpage',
+    name: 'Plano Landing Page',
+    priceLabel: 'R$ 44,90/mês',
     productLimit: 0,
     photoLimit: 10,
     priorityWeight: 1,
@@ -48,7 +58,7 @@ export const PLAN_CONFIG: PlanConfigMap = {
 };
 
 export function normalizeStorePlan(plan?: string | null): StorePlan {
-  if (plan === 'destaque' || plan === 'premium' || plan === 'presenca') {
+  if (plan === 'destaque' || plan === 'premium' || plan === 'presenca' || plan === 'landingpage') {
     return plan;
   }
   return 'presenca';
@@ -56,9 +66,10 @@ export function normalizeStorePlan(plan?: string | null): StorePlan {
 
 export function buildPlanConfigMap(rows?: PlanConfigInput[] | null): PlanConfigMap {
   const map: PlanConfigMap = {
-    presenca: { ...PLAN_CONFIG.presenca },
-    destaque: { ...PLAN_CONFIG.destaque },
-    premium: { ...PLAN_CONFIG.premium },
+    presenca:     { ...PLAN_CONFIG.presenca },
+    landingpage:  { ...PLAN_CONFIG.landingpage },
+    destaque:     { ...PLAN_CONFIG.destaque },
+    premium:      { ...PLAN_CONFIG.premium },
   };
 
   (rows || []).forEach((row) => {
@@ -85,7 +96,7 @@ export function buildPlanConfigMap(rows?: PlanConfigInput[] | null): PlanConfigM
 }
 
 export function getPlanConfigList(configMap: PlanConfigMap = PLAN_CONFIG) {
-  return ['presenca', 'destaque', 'premium'].map((plan) => configMap[plan as StorePlan]);
+  return PLAN_ORDER.map((plan) => configMap[plan]);
 }
 
 export function getPlanConfig(plan?: string | null, configMap: PlanConfigMap = PLAN_CONFIG): PlanConfig {
@@ -106,9 +117,10 @@ export function getPlanDefaults(plan?: string | null, configMap: PlanConfigMap =
 
 function getPlanOrder(plan?: string | null) {
   const normalized = normalizeStorePlan(plan);
-  if (normalized === 'presenca') return 1;
-  if (normalized === 'destaque') return 2;
-  return 3;
+  if (normalized === 'presenca')    return 1;
+  if (normalized === 'landingpage') return 2;
+  if (normalized === 'destaque')    return 3;
+  return 4;
 }
 
 export function getPlanTransition(

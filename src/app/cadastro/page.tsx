@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 import { useStorePlans } from "@/lib/useStorePlans";
-import { getPlanDefaults, normalizeStorePlan } from "@/lib/storePlans";
+import { getPlanDefaults, normalizeStorePlan, type StorePlan } from "@/lib/storePlans";
 
 export default function CadastroPage() {
   const router = useRouter();
@@ -33,7 +33,7 @@ export default function CadastroPage() {
   const [storeName, setStoreName] = useState(""); // Para lojista
   const [ownerName, setOwnerName] = useState(""); // Para lojista
   const [storeCategory, setStoreCategory] = useState<"varejo" | "alimentacao">("varejo"); // Categoria da loja
-  const [selectedPlan, setSelectedPlan] = useState<"presenca" | "destaque" | "premium">("presenca");
+  const [selectedPlan, setSelectedPlan] = useState<StorePlan>("presenca");
 
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);

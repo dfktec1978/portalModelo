@@ -30,5 +30,5 @@ export async function getServerPlanConfig(plan?: string | null) {
 
 export async function getServerPlanList() {
   const configMap = await fetchServerPlanConfigMap();
-  return (['presenca', 'destaque', 'premium'] as StorePlan[]).map((plan) => configMap[plan]);
+  return (['presenca', 'landingpage', 'destaque', 'premium'] as StorePlan[]).map((plan) => configMap[plan]);
 }

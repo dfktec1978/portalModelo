@@ -6,7 +6,7 @@ import { resolveStoreLimits } from "@/lib/storePlans";
 
 type Props = {
   view: string;
-  setView: (v: 'overview'|'orders'|'finance'|'appearance'|'settings'|'products'|'menu'|'profile'|'schedule'|'stock'|'additionals'|'categories'|'pizza-flavors'|'variants') => void;
+  setView: (v: 'overview'|'orders'|'finance'|'appearance'|'settings'|'payments'|'products'|'menu'|'profile'|'schedule'|'stock'|'additionals'|'categories'|'pizza-flavors'|'variants'|'landing-profile') => void;
   category?: 'varejo' | 'alimentacao';
   setCategory?: (v: 'varejo' | 'alimentacao') => void;
   selectedStoreSlug?: string | null;
@@ -111,6 +111,8 @@ export default function StorePanelSidebar({ view, setView, selectedStoreSlug, se
   }, [selectedStoreSlug, stores]);
 
   const limits = resolveStoreLimits(store);
+  const normalizedPlan = String(store?.plan || '').toLowerCase();
+  const canManageLandingProfile = ['landingpage', 'destaque', 'premium'].includes(normalizedPlan);
 
   return (
     <aside className="w-64 flex flex-col gap-4">
@@ -224,6 +226,14 @@ export default function StorePanelSidebar({ view, setView, selectedStoreSlug, se
           <button className={`text-left p-2 rounded text-sm ${view === 'settings' ? 'bg-slate-700 font-semibold' : 'hover:bg-slate-700'}`} onClick={() => setView('settings')}>
             ⚙️ Configurações
           </button>
+          {canManageLandingProfile && (
+            <button className={`text-left p-2 rounded text-sm ${view === 'landing-profile' ? 'bg-slate-700 font-semibold' : 'hover:bg-slate-700'}`} onClick={() => setView('landing-profile')}>
+              🌐 Landing Page
+            </button>
+          )}
+          <button className={`text-left p-2 rounded text-sm ${view === 'payments' ? 'bg-slate-700 font-semibold' : 'hover:bg-slate-700'}`} onClick={() => setView('payments')}>
+            💳 Pagamentos
+          </button>
         </nav>
       </div>
 
@@ -239,13 +249,15 @@ export default function StorePanelSidebar({ view, setView, selectedStoreSlug, se
                 <span className="text-blue-700 font-bold text-xs">🏪</span>
               )}
             </div>
-            <div>
-              <div className="font-semibold text-sm">{store.store_name}</div>
+            <div className="min-w-0 flex-1">
+              <div className="font-semibold text-sm truncate">{store.store_name}</div>
               <div className="text-xs text-blue-200">
                 {store.status === 'active' ? 'Ativa' : store.status === 'pending' ? 'Pendente' : 'Status: ' + store.status}
               </div>
-              <div className="text-xs text-blue-100 mt-1">
-                Plano: {limits.plan} • Produtos: {limits.product_limit} • Fotos: {limits.photo_limit}
+              <div className="text-xs text-blue-100 mt-1 space-y-0.5 leading-4 break-words">
+                <div><span className="text-blue-200">Plano:</span> {limits.plan}</div>
+                <div><span className="text-blue-200">Produtos:</span> {limits.product_limit}</div>
+                <div><span className="text-blue-200">Fotos:</span> {limits.photo_limit}</div>
               </div>
             </div>
           </div>

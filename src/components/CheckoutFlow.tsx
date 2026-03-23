@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useCheckout } from '@/lib/useCheckout'
 import PixPaymentDisplay from './PixPaymentDisplay'
 import CheckoutOptionsModal from './CheckoutOptionsModal'
@@ -35,7 +35,12 @@ export default function CheckoutFlow({
   const [optionsError, setOptionsError] = useState<string | null>(null)
   const [isProcessingOptions, setIsProcessingOptions] = useState(false)
 
-  const normalizeStoreConfig = (data: any) => {
+  const isValidQrCodeUrl = (value?: string | null) => {
+    if (!value) return false
+    return value.startsWith('http://') || value.startsWith('https://') || value.startsWith('data:image/') || value.startsWith('/')
+  }
+
+  const normalizeStoreConfig = useCallback((data: any) => {
     const deliveryOptions = data?.delivery_options
     const paymentOptions = data?.payment_options
 
@@ -78,7 +83,7 @@ export default function CheckoutFlow({
       schedule_delivery: data?.schedule_delivery || null,
       delivery_instructions: data?.delivery_instructions || null
     }
-  }
+  }, [storeId])
 
   // Carregar configurações da loja
   useEffect(() => {
@@ -113,7 +118,7 @@ export default function CheckoutFlow({
     }
 
     if (storeId) fetchStoreConfig()
-  }, [storeId])
+  }, [storeId, normalizeStoreConfig])
 
   useEffect(() => {
     if (!loadingConfig) {
@@ -228,7 +233,13 @@ export default function CheckoutFlow({
       <PixPaymentDisplay
         orderId={checkout.orderData.id}
         pixQrCode={checkout.orderData.pix_qr_code || ''}
-        pixQrCodeUrl={checkout.orderData.pix_qr_code || ''}
+        pixQrCodeUrl={
+          isValidQrCodeUrl(checkout.orderData.pix_qr_code_url)
+            ? checkout.orderData.pix_qr_code_url || ''
+            : isValidQrCodeUrl(checkout.orderData.pix_qr_code)
+              ? checkout.orderData.pix_qr_code || ''
+              : ''
+        }
         pixCopyPaste={checkout.orderData.pix_copy_paste || ''}
         amount={cartTotal}
         storePixKey={storeConfig.pix_key}

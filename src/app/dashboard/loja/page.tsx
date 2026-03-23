@@ -10,10 +10,12 @@ import StoreOverview from "@/components/StoreOverview";
 import StoreOrdersModule from "@/components/StoreOrdersModule";
 import StoreFinanceModule from "@/components/StoreFinanceModule";
 import StoreSettings from "@/components/StoreSettings";
+import StoreLandingProfileSettings from "@/components/StoreLandingProfileSettings";
 
+import StorePaymentSettings from "@/components/StorePaymentSettings";
 export default function LojaDashboardPage() {
   const { user } = useAuth();
-  const [view, setView] = useState<'overview'|'orders'|'finance'|'appearance'|'settings'|'products'|'menu'|'profile'|'schedule'|'stock'|'additionals'|'categories'|'pizza-flavors'|'variants'>('overview');
+  const [view, setView] = useState<'overview'|'orders'|'finance'|'appearance'|'settings'|'payments'|'products'|'menu'|'profile'|'schedule'|'stock'|'additionals'|'categories'|'pizza-flavors'|'variants'|'landing-profile'>('overview');
   const [category, setCategory] = useState<'varejo'|'alimentacao'>('varejo');
   const [selectedStoreSlug, setSelectedStoreSlug] = useState<string | null>(null);
   const [selectedStore, setSelectedStore] = useState<any>(null);
@@ -23,19 +25,28 @@ export default function LojaDashboardPage() {
       setSelectedStore(null);
       return;
     }
+    if (!user?.id) {
+      setSelectedStore(null);
+      return;
+    }
 
     let mounted = true;
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(selectedStoreSlug);
     (async () => {
       try {
-        const query = supabase
-          .from('stores')
-          .select('*')
-          .eq('slug', selectedStoreSlug);
-
         const { data, error } = isUuid
-          ? await query.or(`id.eq.${selectedStoreSlug}`).maybeSingle()
-          : await query.maybeSingle();
+          ? await supabase
+              .from('stores')
+              .select('*')
+              .eq('id', selectedStoreSlug)
+              .eq('owner_id', user.id)
+              .maybeSingle()
+          : await supabase
+              .from('stores')
+              .select('*')
+              .eq('slug', selectedStoreSlug)
+              .eq('owner_id', user.id)
+              .maybeSingle();
 
         if (error) throw error;
         if (!mounted) return;
@@ -50,7 +61,7 @@ export default function LojaDashboardPage() {
     })();
 
     return () => { mounted = false; };
-  }, [selectedStoreSlug]);
+  }, [selectedStoreSlug, user?.id]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -94,6 +105,9 @@ export default function LojaDashboardPage() {
           {view === 'menu' && category === 'alimentacao' && (
             <StoreMenuModule storeSlug={selectedStore?.slug || selectedStore?.id} store={selectedStore} />
           )}
+
+          {view === 'payments' && <StorePaymentSettings store={selectedStore} />}
+          {view === 'landing-profile' && ['landingpage', 'destaque', 'premium'].includes(String(selectedStore?.plan || '').toLowerCase()) && <StoreLandingProfileSettings store={selectedStore} />}
         </main>
       </div>
     </div>

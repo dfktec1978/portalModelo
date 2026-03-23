@@ -210,7 +210,12 @@ export default function StoreSettings({ store, onStoreUpdated }: Props) {
       }
     } catch (error: any) {
       console.error('Erro ao salvar:', error)
-      setMessage('Erro ao salvar configurações')
+      const rawMessage = String(error?.message || '')
+      if (/stores_plan_check|violates check constraint/i.test(rawMessage) && normalizeStorePlan(form.plan) === 'landingpage') {
+        setMessage('Seu banco ainda não permite o plano LandingPage. Execute o SQL `sql/add-landingpage-to-plan-check.sql` no Supabase e tente novamente.')
+      } else {
+        setMessage(`Erro ao salvar configurações: ${rawMessage || 'erro desconhecido'}`)
+      }
     } finally {
       setLoading(false)
     }

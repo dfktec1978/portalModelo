@@ -112,6 +112,22 @@ export default function AdminIndex() {
         </Link>
 
         <Link
+          href="/admin/cobrancas"
+          className="bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-6 transition"
+        >
+          <h3 className="font-bold text-lg mb-2 text-white">💰 Cobranças Mensais</h3>
+          <p className="text-gray-300 text-sm">Boletos, pendências e pagamentos dos lojistas</p>
+        </Link>
+
+        <Link
+          href="/admin/vitrines"
+          className="bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-6 transition"
+        >
+          <h3 className="font-bold text-lg mb-2 text-white">🧩 Vitrines Grátis/Landing</h3>
+          <p className="text-gray-300 text-sm">Gerencie campos institucionais dos planos Grátis e LandingPage</p>
+        </Link>
+
+        <Link
           href="/admin/noticias"
           className="bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-6 transition"
         >

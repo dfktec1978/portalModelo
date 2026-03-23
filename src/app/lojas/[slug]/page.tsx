@@ -12,12 +12,20 @@ type Store = {
   id: string
   store_name: string
   slug: string
-  category: 'varejo' | 'alimentacao'
+  category: string | null
+  plan: string | null
   theme_color: string
   logo_url: string | null
   description: string | null
+  specialty: string | null
   phone: string | null
   address: string | null
+  email: string | null
+  facebook_url: string | null
+  instagram_url: string | null
+  business_hours: string | null
+  landing_description: string | null
+  landing_photo_urls: string[] | null
   city: string | null
   state: string | null
   status: string
@@ -547,6 +555,26 @@ export default function LojaPublicPage() {
     return colorMap[key] || '#e5e7eb'
   }
 
+  const makeExternalUrl = (value?: string | null, prefix?: string) => {
+    const raw = String(value || '').trim()
+    if (!raw) return null
+    if (/^https?:\/\//i.test(raw)) return raw
+    if (!prefix) return raw
+    return `${prefix}${raw.replace(/^@/, '')}`
+  }
+
+  const isShowcasePlan = ['presenca', 'landingpage'].includes(String(store.plan || '').toLowerCase())
+  const showcaseDescription = store.landing_description || store.description
+  const showcasePhotos = Array.isArray(store.landing_photo_urls)
+    ? store.landing_photo_urls.filter(Boolean).slice(0, 5)
+    : []
+  const whatsappUrl = store.phone
+    ? `https://wa.me/55${store.phone.replace(/\D/g, '')}`
+    : null
+  const instagramUrl = makeExternalUrl(store.instagram_url, 'https://instagram.com/')
+  const facebookUrl = makeExternalUrl(store.facebook_url, 'https://facebook.com/')
+  const shouldRenderCatalog = products.length > 0
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header com tema da loja */}
@@ -572,13 +600,16 @@ export default function LojaPublicPage() {
             {/* Informações */}
             <div className="flex-1">
               <h1 className="text-3xl font-bold mb-2">{store.store_name}</h1>
+              {store.specialty && (
+                <p className="text-white/80 text-sm md:text-base mb-2">{store.specialty}</p>
+              )}
               {store.description && (
                 <p className="text-white/90 mb-3">{store.description}</p>
               )}
               <div className="flex flex-wrap gap-3 text-sm">
-                {store.phone && (
+                {whatsappUrl && (
                   <a 
-                    href={`https://wa.me/55${store.phone.replace(/\D/g, '')}`}
+                    href={whatsappUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors"
@@ -604,6 +635,194 @@ export default function LojaPublicPage() {
 
       {/* Conteúdo principal */}
       <main className="max-w-6xl mx-auto px-4 py-8">
+        {isShowcasePlan && (
+          <section className="mb-12">
+            {/* Hero Section com imagem de fundo */}
+            {showcasePhotos.length > 0 && (
+              <div className="relative h-96 -mx-4 mb-8 overflow-hidden rounded-3xl shadow-2xl group">
+                {/* Imagem de fundo */}
+                <Image
+                  src={showcasePhotos[0]}
+                  alt={store.store_name}
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                  priority
+                />
+                {/* Overlay gradiente */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
+                
+                {/* Conteúdo do Hero */}
+                <div className="absolute inset-0 flex flex-col justify-between p-6 md:p-8">
+                  {/* Logo no canto superior */}
+                  {store.logo_url && (
+                    <div className="flex justify-start">
+                      <div className="w-16 h-16 md:w-20 md:h-20 bg-white/95 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-lg">
+                        <Image 
+                          src={store.logo_url} 
+                          alt={store.store_name}
+                          width={80}
+                          height={80}
+                          className="object-contain p-2"
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Informações no rodapé do hero */}
+                  <div className="text-white space-y-3">
+                    <div className="flex items-end gap-4 flex-wrap">
+                      <div className="flex-1">
+                        <h1 className="text-4xl md:text-5xl font-bold mb-2 drop-shadow-lg">{store.store_name}</h1>
+                        {store.specialty && (
+                          <p className="text-lg md:text-xl text-white/90 drop-shadow font-light">{store.specialty}</p>
+                        )}
+                      </div>
+                      <span className="inline-flex items-center rounded-full bg-white/20 backdrop-blur-sm px-4 py-2 text-sm font-semibold text-white border border-white/30 mb-1">
+                        {String(store.plan || '').toLowerCase() === 'landingpage' ? '✨ Plano LandingPage' : '🌟 Plano Grátis'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Grid de Informações e Descrição */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
+              {/* Descrição - Coluna Larga */}
+              <div className="lg:col-span-2">
+                {showcaseDescription && (
+                  <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-4">Sobre</h2>
+                    <p className="text-gray-700 leading-8 text-base whitespace-pre-line">{showcaseDescription}</p>
+                  </div>
+                )}
+                {!showcaseDescription && (
+                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-8 border border-gray-200 text-center">
+                    <p className="text-gray-500 text-lg">Descrição institucional não adicionada</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Informações de Contato - Card Lateral */}
+              <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 h-fit sticky top-4">
+                <h3 className="text-xl font-bold text-gray-900 mb-6">Informações</h3>
+                
+                <div className="space-y-5 mb-8">
+                  {store.category && (
+                    <div className="flex gap-3">
+                      <span className="text-2xl">📂</span>
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Categoria</p>
+                        <p className="text-gray-900 font-medium">{store.category}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {store.address && (
+                    <div className="flex gap-3">
+                      <span className="text-2xl">📍</span>
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Localização</p>
+                        <p className="text-gray-900 font-medium">{store.address}</p>
+                        {store.city && store.state && (
+                          <p className="text-sm text-gray-600 mt-1">{store.city}, {store.state}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {store.business_hours && (
+                    <div className="flex gap-3">
+                      <span className="text-2xl">🕐</span>
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Horário</p>
+                        <p className="text-gray-900 font-medium whitespace-pre-line text-sm">{store.business_hours}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {store.email && (
+                    <div className="flex gap-3">
+                      <span className="text-2xl">✉️</span>
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">E-mail</p>
+                        <a href={`mailto:${store.email}`} className="text-blue-600 hover:text-blue-700 font-medium break-all">
+                          {store.email}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Botões de Contato */}
+                <div className="space-y-3 border-t border-gray-200 pt-6">
+                  {whatsappUrl && (
+                    <a 
+                      href={whatsappUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white font-semibold transition-colors shadow-sm"
+                    >
+                      <span>💬</span> WhatsApp
+                    </a>
+                  )}
+                  {instagramUrl && (
+                    <a 
+                      href={instagramUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-semibold transition-colors shadow-sm"
+                    >
+                      <span>📷</span> Instagram
+                    </a>
+                  )}
+                  {facebookUrl && (
+                    <a 
+                      href={facebookUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors shadow-sm"
+                    >
+                      <span>f</span> Facebook
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Galeria em Grid Premium */}
+            {showcasePhotos.length > 0 && (
+              <div className="mb-12">
+                <h2 className="text-3xl font-bold text-gray-900 mb-8">Galeria</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {showcasePhotos.map((photo, index) => (
+                    <div 
+                      key={`${photo}-${index}`}
+                      className="group relative aspect-square overflow-hidden rounded-2xl shadow-md hover:shadow-xl transition-all duration-300"
+                    >
+                      <Image
+                        src={photo}
+                        alt={`${store.store_name} - foto ${index + 1}`}
+                        fill
+                        className="object-cover group-hover:scale-110 transition-transform duration-300"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      />
+                      {/* Overlay ao hover */}
+                      <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-colors duration-300 flex items-end p-4">
+                        <div className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <p className="font-semibold">Foto {index + 1}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {shouldRenderCatalog ? (
+          <>
         {/* Barra de Busca e Filtros */}
         <div className="mb-6 space-y-4">
           {/* Busca */}
@@ -738,9 +957,26 @@ export default function LojaPublicPage() {
             ))}
           </div>
         )}
+          </>
+        ) : isShowcasePlan ? (
+          <div className="rounded-2xl bg-white p-8 shadow-sm border border-gray-200 text-center">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Página institucional ativa</h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Esta vitrine foi configurada para apresentar a empresa, seus canais de contato e sua galeria de fotos.
+            </p>
+          </div>
+        ) : (
+          <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+            <p className="text-gray-500">
+              {isAlimentacao
+                ? 'Nenhum item no cardápio no momento.'
+                : 'Nenhum produto disponível no momento.'}
+            </p>
+          </div>
+        )}
 
         {/* Carrinho Flutuante */}
-        {cart.length > 0 && (
+        {cart.length > 0 && shouldRenderCatalog && (
           <button
             onClick={() => setShowCheckout(true)}
             className="fixed bottom-6 right-6 bg-green-600 text-white px-6 py-4 rounded-full shadow-lg hover:bg-green-700 transition-colors flex items-center gap-3"
