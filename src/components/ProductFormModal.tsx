@@ -17,6 +17,7 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string>('');
   const normalizedStoreCategory = (storeCategory || '')
     .trim()
     .toLowerCase()
@@ -813,6 +814,12 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
           {error && (
             <div className="bg-red-50 text-red-800 p-3 rounded border border-red-200 text-sm">
               {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="bg-green-50 text-green-800 p-3 rounded border border-green-200 text-sm">
+              {success}
             </div>
           )}
 
