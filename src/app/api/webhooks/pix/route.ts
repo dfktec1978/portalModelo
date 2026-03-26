@@ -160,3 +160,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error?.message || 'Erro no webhook Pix' }, { status: 500 })
   }
 }
+
+// A Efí faz um GET na URL para validar a existência do endpoint antes de registrar o webhook.
+// Deve retornar 200 OK.
+export async function GET() {
+  return NextResponse.json({ ok: true })
+}
