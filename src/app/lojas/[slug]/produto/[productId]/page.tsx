@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseClient'
+import { getReadableTextColor, getTheme, PORTAL_THEMES, ThemeColor } from '@/lib/themes'
 
 type Store = {
   id: string
@@ -35,11 +36,11 @@ type Product = {
   model?: string
 }
 
-const THEME_COLORS: Record<string, { primary: string; secondary: string; accent: string }> = {
-  azul: { primary: '#003049', secondary: '#0077B6', accent: '#00B4D8' },
-  vermelho: { primary: '#D62828', secondary: '#F77F00', accent: '#FCBF49' },
-  verde: { primary: '#2D6A4F', secondary: '#52B788', accent: '#95D5B2' },
-  roxo: { primary: '#5A189A', secondary: '#9D4EDD', accent: '#C77DFF' }
+function resolveThemeId(themeColor?: string | null): ThemeColor {
+  if (themeColor && themeColor in PORTAL_THEMES) {
+    return themeColor as ThemeColor
+  }
+  return 'azul'
 }
 
 export default function ProductPage() {
@@ -224,7 +225,9 @@ export default function ProductPage() {
     )
   }
 
-  const theme = THEME_COLORS[store.theme_color] || THEME_COLORS.azul
+  const themeConfig = getTheme(resolveThemeId(store.theme_color))
+  const theme = themeConfig.colors
+  const secondaryTextColor = getReadableTextColor(theme.secondary)
   const images = product.images || []
   const maxQty = getMaxQuantity()
 
@@ -268,9 +271,10 @@ export default function ProductPage() {
                     onClick={() => setSelectedImageIndex(idx)}
                     className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
                       selectedImageIndex === idx
-                        ? 'border-blue-600 ring-2 ring-blue-200'
+                        ? 'ring-2'
                         : 'border-gray-200 hover:border-gray-400'
                     }`}
+                    style={selectedImageIndex === idx ? { borderColor: theme.secondary, boxShadow: `0 0 0 2px ${theme.secondary}33` } : {}}
                   >
                     <Image src={img} alt={`${product.name} ${idx + 1}`} fill className="object-cover" />
                   </button>
@@ -323,9 +327,10 @@ export default function ProductPage() {
                           onClick={() => setSelectedSize(size)}
                           className={`px-6 py-3 rounded-lg border-2 font-medium transition-all ${
                             selectedSize === size
-                              ? 'border-blue-600 bg-blue-50 text-blue-700'
+                              ? ''
                               : 'border-gray-300 hover:border-gray-400'
                           }`}
+                          style={selectedSize === size ? { borderColor: theme.secondary, backgroundColor: `${theme.secondary}14`, color: theme.secondary } : {}}
                         >
                           {size}
                         </button>
@@ -347,9 +352,10 @@ export default function ProductPage() {
                           onClick={() => setSelectedColor(color)}
                           className={`px-6 py-3 rounded-lg border-2 font-medium transition-all ${
                             selectedColor === color
-                              ? 'border-blue-600 bg-blue-50 text-blue-700'
+                              ? ''
                               : 'border-gray-300 hover:border-gray-400'
                           }`}
+                          style={selectedColor === color ? { borderColor: theme.secondary, backgroundColor: `${theme.secondary}14`, color: theme.secondary } : {}}
                         >
                           {color}
                         </button>
@@ -409,8 +415,8 @@ export default function ProductPage() {
             <button
               onClick={handleAddToCart}
               disabled={(product?.has_variants && !selectedVariant) || (maxQty !== null && maxQty <= 0)}
-              className="w-full py-4 rounded-lg text-white font-bold text-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ backgroundColor: theme.secondary }}
+              className="w-full py-4 rounded-lg font-bold text-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: theme.secondary, color: secondaryTextColor }}
             >
               🛒 Adicionar ao Carrinho
             </button>

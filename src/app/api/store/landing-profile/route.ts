@@ -20,6 +20,7 @@ type LandingProfileBody = {
   logo_url?: string
   landing_photo_urls?: string[]
   city?: string
+  state?: string
 }
 
 async function getAuthenticatedUser(request: NextRequest) {
@@ -112,6 +113,7 @@ function getLandingPayload(store: any) {
     logo_url: store.logo_url || store.logo || '',
     landing_photo_urls: Array.isArray(store.landing_photo_urls) ? store.landing_photo_urls : [],
     city: store.city || '',
+    state: store.state || '',
   }
 }
 
@@ -182,6 +184,7 @@ export async function PUT(request: NextRequest) {
       logo_url: body.logo_url || null,
       landing_photo_urls: normalizePhotoUrls(body.landing_photo_urls),
       city: body.city || null,
+      state: body.state || null,
     }
 
     const { data, error } = await supabaseAdmin

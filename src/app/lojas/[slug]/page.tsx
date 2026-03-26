@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabaseClient'
+import { getReadableTextColor, getTheme, getThemeSemanticTokens, PORTAL_THEMES, ThemeColor } from '@/lib/themes'
 import PizzaSelectionModal from '@/components/PizzaSelectionModal'
 import CheckoutFlow from '@/components/CheckoutFlow'
 
@@ -30,6 +31,9 @@ type Store = {
   state: string | null
   status: string
   delivery_fee: number | null
+  min_order_delivery: number | null
+  delivery_options: any | null
+  payment_options: any | null
 }
 
 type Product = {
@@ -50,11 +54,103 @@ type Additional = {
   price: number
 }
 
-const THEME_COLORS: Record<string, { primary: string; secondary: string; accent: string }> = {
-  azul: { primary: '#003049', secondary: '#0077B6', accent: '#00B4D8' },
-  vermelho: { primary: '#D62828', secondary: '#F77F00', accent: '#FCBF49' },
-  verde: { primary: '#2D6A4F', secondary: '#52B788', accent: '#95D5B2' },
-  roxo: { primary: '#5A189A', secondary: '#9D4EDD', accent: '#C77DFF' }
+function resolveThemeId(themeColor?: string | null): ThemeColor {
+  if (themeColor && themeColor in PORTAL_THEMES) {
+    return themeColor as ThemeColor
+  }
+  return 'azul'
+}
+
+function IconCategory() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4.5 w-4.5" aria-hidden="true">
+      <path d="M3.75 7.5h6.5v6.5h-6.5z" />
+      <path d="M13.75 7.5h6.5v3.25h-6.5z" />
+      <path d="M13.75 13.75h6.5v6.5h-6.5z" />
+      <path d="M3.75 17h6.5" />
+    </svg>
+  )
+}
+
+function IconLocation() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4.5 w-4.5" aria-hidden="true">
+      <path d="M12 20s6-5.2 6-11a6 6 0 1 0-12 0c0 5.8 6 11 6 11Z" />
+      <circle cx="12" cy="9" r="2.25" />
+    </svg>
+  )
+}
+
+function IconClock() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4.5 w-4.5" aria-hidden="true">
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 7.75v4.75l3 1.75" />
+    </svg>
+  )
+}
+
+function IconMail() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4.5 w-4.5" aria-hidden="true">
+      <rect x="3.5" y="5.5" width="17" height="13" rx="2.25" />
+      <path d="m5 7 7 5 7-5" />
+    </svg>
+  )
+}
+
+function IconWhatsApp() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-4.5 w-4.5" aria-hidden="true">
+      <path d="M19.2 4.8A9.8 9.8 0 0 0 3.6 16.2L2 22l6-1.6a9.8 9.8 0 0 0 4 .8h0a9.8 9.8 0 0 0 7.2-16.4Zm-7.2 14.7a8.1 8.1 0 0 1-4.1-1.1l-.3-.2-3.6.9 1-3.5-.2-.4a8.1 8.1 0 1 1 7.2 4.3Zm4.4-6.1c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.6.1-.7.8-.9 1-.3.2-.6.1a6.7 6.7 0 0 1-2-1.2 7.4 7.4 0 0 1-1.4-1.8c-.1-.3 0-.4.1-.6l.4-.5.2-.4a.6.6 0 0 0 0-.5c-.1-.1-.6-1.4-.9-1.9-.2-.5-.5-.4-.6-.4h-.5a1 1 0 0 0-.8.4 3.1 3.1 0 0 0-1 2.2c0 1.3.9 2.5 1 2.7.1.2 2 3 4.9 4.2.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.4-.6 1.6-1.2.2-.6.2-1.1.1-1.2-.1-.2-.3-.2-.5-.3Z" />
+    </svg>
+  )
+}
+
+function IconInstagram() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4.5 w-4.5" aria-hidden="true">
+      <rect x="4" y="4" width="16" height="16" rx="4.5" />
+      <circle cx="12" cy="12" r="3.5" />
+      <circle cx="17.3" cy="6.7" r="0.8" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+function IconFacebook() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-4.5 w-4.5" aria-hidden="true">
+      <path d="M13.4 21v-7.4h2.5l.4-3h-2.9V8.7c0-.9.3-1.5 1.6-1.5h1.5V4.5c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.9v2.3H8v3h2.6V21h2.8Z" />
+    </svg>
+  )
+}
+
+function IconChevronLeft() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="h-4.5 w-4.5" aria-hidden="true">
+      <path d="m14.5 5.5-6 6 6 6" />
+    </svg>
+  )
+}
+
+function IconChevronRight() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="h-4.5 w-4.5" aria-hidden="true">
+      <path d="m9.5 5.5 6 6-6 6" />
+    </svg>
+  )
+}
+
+function normalizeDeliveryOptions(raw: any): { retirada: boolean; envio: boolean; condicional: boolean } {
+  if (Array.isArray(raw)) return { retirada: raw.includes('retirada'), envio: raw.includes('envio'), condicional: raw.includes('condicional') }
+  if (raw && typeof raw === 'object') return { retirada: !!raw.retirada, envio: !!raw.envio, condicional: !!raw.condicional }
+  return { retirada: true, envio: false, condicional: false }
+}
+
+function normalizePaymentOptions(raw: any): { pix: boolean; na_entrega: boolean; na_retirada: boolean; cartao: boolean } {
+  if (Array.isArray(raw)) return { pix: raw.includes('pix'), na_entrega: raw.includes('na_entrega'), na_retirada: raw.includes('na_retirada'), cartao: raw.includes('cartao') }
+  if (raw && typeof raw === 'object') return { pix: !!raw.pix, na_entrega: !!raw.na_entrega, na_retirada: !!raw.na_retirada, cartao: !!raw.cartao }
+  return { pix: true, na_entrega: false, na_retirada: false, cartao: false }
 }
 
 export default function LojaPublicPage() {
@@ -88,6 +184,8 @@ export default function LojaPublicPage() {
   const [selectedSize, setSelectedSize] = useState<string>('')
   const [selectedVariant, setSelectedVariant] = useState<any>(null)
   const [colorHexMap, setColorHexMap] = useState<Record<string, string>>({})
+  const [activeShowcasePhotoIndex, setActiveShowcasePhotoIndex] = useState(0)
+  const [hoveredShowcasePhotoIndex, setHoveredShowcasePhotoIndex] = useState<number | null>(null)
 
   // Carregar carrinho do localStorage quando a página monta
   useEffect(() => {
@@ -498,6 +596,72 @@ export default function LojaPublicPage() {
     return sum + (item.price + additionalsTotal) * item.quantity
   }, 0)
 
+  const getColorHex = (colorName: string) => {
+    const key = colorName.trim().toLowerCase()
+    if (colorHexMap[key]) return colorHexMap[key]
+    const colorMap: Record<string, string> = {
+      preto: '#000000',
+      branca: '#ffffff',
+      branco: '#ffffff',
+      cinza: '#9ca3af',
+      cinzaescuro: '#4b5563',
+      cinzaescuroa: '#4b5563',
+      amarelo: '#facc15',
+      azul: '#3b82f6',
+      'azul marinho': '#1e3a8a',
+      vermelho: '#ef4444',
+      verde: '#22c55e',
+      rosa: '#ec4899',
+      marrom: '#78350f',
+      bege: '#f5f5dc'
+    }
+    return colorMap[key] || '#e5e7eb'
+  }
+
+  const makeExternalUrl = (value?: string | null, prefix?: string) => {
+    const raw = String(value || '').trim()
+    if (!raw) return null
+    if (/^https?:\/\//i.test(raw)) return raw
+    if (!prefix) return raw
+    return `${prefix}${raw.replace(/^@/, '')}`
+  }
+
+  const isShowcasePlan = ['presenca', 'landingpage'].includes(String(store?.plan || '').toLowerCase())
+  const showcaseDescription = store?.landing_description || store?.description || ''
+  const showcasePhotos = Array.isArray(store?.landing_photo_urls)
+    ? store.landing_photo_urls.filter(Boolean).slice(0, 5)
+    : []
+  const showcasePhotoSlots = Array.from({ length: 5 }, (_, index) => showcasePhotos[index] || null)
+  const currentShowcasePhoto = showcasePhotos[activeShowcasePhotoIndex] || showcasePhotos[0] || null
+  const hasMultipleShowcasePhotos = showcasePhotos.length > 1
+  const whatsappUrl = store?.phone
+    ? `https://wa.me/55${store.phone.replace(/\D/g, '')}`
+    : null
+  const instagramUrl = makeExternalUrl(store?.instagram_url, 'https://instagram.com/')
+  const facebookUrl = makeExternalUrl(store?.facebook_url, 'https://facebook.com/')
+  const shouldRenderCatalog = products.length > 0
+
+  useEffect(() => {
+    if (showcasePhotos.length === 0) {
+      setActiveShowcasePhotoIndex(0)
+      return
+    }
+
+    if (activeShowcasePhotoIndex > showcasePhotos.length - 1) {
+      setActiveShowcasePhotoIndex(0)
+    }
+  }, [activeShowcasePhotoIndex, showcasePhotos.length])
+
+  const showPreviousShowcasePhoto = () => {
+    if (!hasMultipleShowcasePhotos) return
+    setActiveShowcasePhotoIndex((current) => (current - 1 + showcasePhotos.length) % showcasePhotos.length)
+  }
+
+  const showNextShowcasePhoto = () => {
+    if (!hasMultipleShowcasePhotos) return
+    setActiveShowcasePhotoIndex((current) => (current + 1) % showcasePhotos.length)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -529,82 +693,69 @@ export default function LojaPublicPage() {
     )
   }
 
-  const theme = THEME_COLORS[store.theme_color] || THEME_COLORS.azul
+  const themeConfig = getTheme(resolveThemeId(store.theme_color))
+  const theme = themeConfig.colors
+  const themeTokens = getThemeSemanticTokens(themeConfig)
+  const secondaryTextColor = getReadableTextColor(theme.secondary)
   const isAlimentacao = store.category === 'alimentacao'
   const maxQty = getMaxQuantity()
 
-  const getColorHex = (colorName: string) => {
-    const key = colorName.trim().toLowerCase()
-    if (colorHexMap[key]) return colorHexMap[key]
-    const colorMap: Record<string, string> = {
-      preto: '#000000',
-      branca: '#ffffff',
-      branco: '#ffffff',
-      cinza: '#9ca3af',
-      cinzaescuro: '#4b5563',
-      cinzaescuroa: '#4b5563',
-      amarelo: '#facc15',
-      azul: '#3b82f6',
-      'azul marinho': '#1e3a8a',
-      vermelho: '#ef4444',
-      verde: '#22c55e',
-      rosa: '#ec4899',
-      marrom: '#78350f',
-      bege: '#f5f5dc'
-    }
-    return colorMap[key] || '#e5e7eb'
-  }
-
-  const makeExternalUrl = (value?: string | null, prefix?: string) => {
-    const raw = String(value || '').trim()
-    if (!raw) return null
-    if (/^https?:\/\//i.test(raw)) return raw
-    if (!prefix) return raw
-    return `${prefix}${raw.replace(/^@/, '')}`
-  }
-
-  const isShowcasePlan = ['presenca', 'landingpage'].includes(String(store.plan || '').toLowerCase())
-  const showcaseDescription = store.landing_description || store.description
-  const showcasePhotos = Array.isArray(store.landing_photo_urls)
-    ? store.landing_photo_urls.filter(Boolean).slice(0, 5)
-    : []
-  const whatsappUrl = store.phone
-    ? `https://wa.me/55${store.phone.replace(/\D/g, '')}`
-    : null
-  const instagramUrl = makeExternalUrl(store.instagram_url, 'https://instagram.com/')
-  const facebookUrl = makeExternalUrl(store.facebook_url, 'https://facebook.com/')
-  const shouldRenderCatalog = products.length > 0
+  // Dados reais para o banner operacional
+  const delivOpts = normalizeDeliveryOptions(store.delivery_options)
+  const payOpts = normalizePaymentOptions(store.payment_options)
+  const minOrder = store.min_order_delivery
+  const paymentLabel = [
+    payOpts.pix ? 'Pix' : null,
+    payOpts.na_entrega ? 'Na entrega' : null,
+    payOpts.na_retirada ? 'Na retirada' : null,
+    payOpts.cartao ? 'Cartão' : null,
+  ].filter(Boolean).join(', ') || 'Consulte'
+  const deliveryLabel = [
+    delivOpts.envio && store.delivery_fee !== null ? `Entrega R$ ${store.delivery_fee.toFixed(2)}` : delivOpts.envio ? 'Entrega disponível' : null,
+    delivOpts.retirada ? 'Retirada disponível' : null,
+  ].filter(Boolean).join(' · ') || 'Consulte as opções'
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header com tema da loja */}
       <header 
         className="text-white shadow-md"
         style={{ background: `linear-gradient(135deg, ${theme.primary} 0%, ${theme.secondary} 100%)` }}
       >
         <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="flex items-center gap-6">
-            {/* Logo */}
             {store.logo_url && (
-              <div className="w-24 h-24 bg-white rounded-lg shadow-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+              <div className="w-20 h-20 md:w-24 md:h-24 bg-white rounded-lg shadow-lg flex items-center justify-center overflow-hidden flex-shrink-0">
                 <Image 
                   src={store.logo_url} 
                   alt={store.store_name}
                   width={96}
                   height={96}
-                  className="object-contain"
+                  className="object-contain p-2"
                 />
               </div>
             )}
             
-            {/* Informações */}
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold mb-2">{store.store_name}</h1>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-3 mb-2">
+                <h1 className="text-3xl font-bold">{store.store_name}</h1>
+                {isShowcasePlan && (
+                  <span
+                    className="inline-flex items-center rounded-full px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm backdrop-blur"
+                    style={{
+                      border: `1px solid ${theme.accent}`,
+                      backgroundColor: `${theme.primary}CC`,
+                      boxShadow: `0 10px 30px ${theme.primary}40`,
+                    }}
+                  >
+                    {String(store.plan || '').toLowerCase() === 'landingpage' ? 'Plano LandingPage' : 'Plano Grátis'}
+                  </span>
+                )}
+              </div>
               {store.specialty && (
                 <p className="text-white/80 text-sm md:text-base mb-2">{store.specialty}</p>
               )}
-              {store.description && (
-                <p className="text-white/90 mb-3">{store.description}</p>
+              {showcaseDescription && (
+                <p className="text-white/90 mb-3 max-w-4xl">{showcaseDescription}</p>
               )}
               <div className="flex flex-wrap gap-3 text-sm">
                 {whatsappUrl && (
@@ -614,12 +765,14 @@ export default function LojaPublicPage() {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors"
                   >
-                    📱 WhatsApp
+                    <IconWhatsApp />
+                    WhatsApp
                   </a>
                 )}
-                {store.address && (
-                  <span className="inline-flex items-center gap-2 bg-white/20 px-4 py-2 rounded-lg">
-                    📍 {store.city && store.state ? `${store.city} - ${store.state}` : 'Ver endereço'}
+                {(store.city || store.state) && (
+                  <span className="inline-flex items-center gap-2 whitespace-nowrap bg-white/20 px-4 py-2 rounded-lg">
+                    <IconLocation />
+                    {[store.city, store.state].filter(Boolean).join(' - ')}
                   </span>
                 )}
                 {isAlimentacao && store.delivery_fee !== null && (
@@ -634,193 +787,255 @@ export default function LojaPublicPage() {
       </header>
 
       {/* Conteúdo principal */}
-      <main className="max-w-6xl mx-auto px-4 py-8">
-        {isShowcasePlan && (
-          <section className="mb-12">
-            {/* Hero Section com imagem de fundo */}
-            {showcasePhotos.length > 0 && (
-              <div className="relative h-96 -mx-4 mb-8 overflow-hidden rounded-3xl shadow-2xl group">
-                {/* Imagem de fundo */}
-                <Image
-                  src={showcasePhotos[0]}
-                  alt={store.store_name}
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-300"
-                  priority
-                />
-                {/* Overlay gradiente */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
-                
-                {/* Conteúdo do Hero */}
-                <div className="absolute inset-0 flex flex-col justify-between p-6 md:p-8">
-                  {/* Logo no canto superior */}
-                  {store.logo_url && (
-                    <div className="flex justify-start">
-                      <div className="w-16 h-16 md:w-20 md:h-20 bg-white/95 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-lg">
-                        <Image 
-                          src={store.logo_url} 
-                          alt={store.store_name}
-                          width={80}
-                          height={80}
-                          className="object-contain p-2"
-                        />
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Informações no rodapé do hero */}
-                  <div className="text-white space-y-3">
-                    <div className="flex items-end gap-4 flex-wrap">
-                      <div className="flex-1">
-                        <h1 className="text-4xl md:text-5xl font-bold mb-2 drop-shadow-lg">{store.store_name}</h1>
-                        {store.specialty && (
-                          <p className="text-lg md:text-xl text-white/90 drop-shadow font-light">{store.specialty}</p>
-                        )}
-                      </div>
-                      <span className="inline-flex items-center rounded-full bg-white/20 backdrop-blur-sm px-4 py-2 text-sm font-semibold text-white border border-white/30 mb-1">
-                        {String(store.plan || '').toLowerCase() === 'landingpage' ? '✨ Plano LandingPage' : '🌟 Plano Grátis'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Grid de Informações e Descrição */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
-              {/* Descrição - Coluna Larga */}
-              <div className="lg:col-span-2">
-                {showcaseDescription && (
-                  <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-4">Sobre</h2>
-                    <p className="text-gray-700 leading-8 text-base whitespace-pre-line">{showcaseDescription}</p>
-                  </div>
-                )}
-                {!showcaseDescription && (
-                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-8 border border-gray-200 text-center">
-                    <p className="text-gray-500 text-lg">Descrição institucional não adicionada</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Informações de Contato - Card Lateral */}
-              <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 h-fit sticky top-4">
-                <h3 className="text-xl font-bold text-gray-900 mb-6">Informações</h3>
-                
-                <div className="space-y-5 mb-8">
-                  {store.category && (
-                    <div className="flex gap-3">
-                      <span className="text-2xl">📂</span>
-                      <div>
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Categoria</p>
-                        <p className="text-gray-900 font-medium">{store.category}</p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {store.address && (
-                    <div className="flex gap-3">
-                      <span className="text-2xl">📍</span>
-                      <div>
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Localização</p>
-                        <p className="text-gray-900 font-medium">{store.address}</p>
-                        {store.city && store.state && (
-                          <p className="text-sm text-gray-600 mt-1">{store.city}, {store.state}</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {store.business_hours && (
-                    <div className="flex gap-3">
-                      <span className="text-2xl">🕐</span>
-                      <div>
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Horário</p>
-                        <p className="text-gray-900 font-medium whitespace-pre-line text-sm">{store.business_hours}</p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {store.email && (
-                    <div className="flex gap-3">
-                      <span className="text-2xl">✉️</span>
-                      <div>
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">E-mail</p>
-                        <a href={`mailto:${store.email}`} className="text-blue-600 hover:text-blue-700 font-medium break-all">
-                          {store.email}
-                        </a>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Botões de Contato */}
-                <div className="space-y-3 border-t border-gray-200 pt-6">
-                  {whatsappUrl && (
-                    <a 
-                      href={whatsappUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white font-semibold transition-colors shadow-sm"
-                    >
-                      <span>💬</span> WhatsApp
-                    </a>
-                  )}
-                  {instagramUrl && (
-                    <a 
-                      href={instagramUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-semibold transition-colors shadow-sm"
-                    >
-                      <span>📷</span> Instagram
-                    </a>
-                  )}
-                  {facebookUrl && (
-                    <a 
-                      href={facebookUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors shadow-sm"
-                    >
-                      <span>f</span> Facebook
-                    </a>
-                  )}
-                </div>
-              </div>
+      <main className={`max-w-6xl mx-auto flex flex-col px-4 py-8 ${cart.length > 0 && shouldRenderCatalog ? 'pb-28 md:pb-8' : ''}`}>
+        {isAlimentacao && shouldRenderCatalog && (
+          <section className="order-1 mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Atendimento</p>
+              <p className="mt-1 text-sm font-semibold text-emerald-950">Pedido imediato</p>
             </div>
-
-            {/* Galeria em Grid Premium */}
-            {showcasePhotos.length > 0 && (
-              <div className="mb-12">
-                <h2 className="text-3xl font-bold text-gray-900 mb-8">Galeria</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {showcasePhotos.map((photo, index) => (
-                    <div 
-                      key={`${photo}-${index}`}
-                      className="group relative aspect-square overflow-hidden rounded-2xl shadow-md hover:shadow-xl transition-all duration-300"
-                    >
-                      <Image
-                        src={photo}
-                        alt={`${store.store_name} - foto ${index + 1}`}
-                        fill
-                        className="object-cover group-hover:scale-110 transition-transform duration-300"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                      />
-                      {/* Overlay ao hover */}
-                      <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-colors duration-300 flex items-end p-4">
-                        <div className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          <p className="font-semibold">Foto {index + 1}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Entrega / Retirada</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900 leading-tight">{deliveryLabel}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pagamento</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{paymentLabel}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Pedido mínimo</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">
+                {minOrder && minOrder > 0 ? `R$ ${minOrder.toFixed(2)}` : 'Sem mínimo'}
+              </p>
+            </div>
           </section>
         )}
 
+        {isShowcasePlan && (
+          <section className={`mb-12 space-y-4 md:space-y-5 ${isAlimentacao && shouldRenderCatalog ? 'order-3' : 'order-1'}`}>
+            <div className="grid grid-cols-1 gap-0 overflow-hidden rounded-[22px] border border-black/5 bg-white shadow-xl lg:grid-cols-[1.45fr_0.62fr]">
+              <div className="border-b border-slate-200/80 p-3 md:p-4 lg:border-b-0 lg:border-r">
+                <div className="rounded-[20px] bg-gradient-to-br from-slate-50 via-white to-slate-100 p-4 shadow-inner ring-1 ring-slate-200/70">
+                  <div className="relative aspect-[4/2.6] overflow-hidden rounded-[18px] border border-slate-300 bg-white shadow-sm">
+                    {currentShowcasePhoto ? (
+                      <Image
+                        src={currentShowcasePhoto}
+                        alt={`${store.store_name} - visualização principal`}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 1024px) 100vw, 66vw"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center px-6 text-center text-3xl font-light leading-tight text-slate-500 md:text-4xl">
+                        Visualização da foto
+                      </div>
+                    )}
+
+                    {hasMultipleShowcasePhotos && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={showPreviousShowcasePhoto}
+                          className="absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/35 bg-black/40 text-white shadow-lg backdrop-blur transition hover:bg-black/55"
+                          aria-label="Foto anterior"
+                        >
+                          <IconChevronLeft />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={showNextShowcasePhoto}
+                          className="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/35 bg-black/40 text-white shadow-lg backdrop-blur transition hover:bg-black/55"
+                          aria-label="Próxima foto"
+                        >
+                          <IconChevronRight />
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-3 gap-2 md:grid-cols-5">
+                    {showcasePhotoSlots.map((photo, index) => {
+                      const isActive = photo ? index === activeShowcasePhotoIndex : index === 0 && !currentShowcasePhoto
+                      const isHovered = hoveredShowcasePhotoIndex === index
+                      return (
+                        <button
+                          key={`showcase-slot-${index}`}
+                          type="button"
+                          onClick={() => photo && setActiveShowcasePhotoIndex(index)}
+                          onMouseEnter={() => photo && setHoveredShowcasePhotoIndex(index)}
+                          onMouseLeave={() => setHoveredShowcasePhotoIndex(null)}
+                          disabled={!photo}
+                          className={`overflow-hidden rounded-2xl border text-left transition ${
+                            isActive
+                              ? 'bg-slate-900 text-white shadow-md'
+                              : photo
+                                ? 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                                : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
+                          }`}
+                          style={
+                            isActive
+                              ? {
+                                  borderColor: theme.accent,
+                                  boxShadow: `0 0 0 2px ${theme.accent}, 0 10px 25px rgba(15, 23, 42, 0.18)`,
+                                }
+                              : isHovered && photo
+                                ? {
+                                    borderColor: theme.secondary,
+                                    boxShadow: `0 0 0 1px ${theme.secondary}, 0 8px 20px ${theme.secondary}22`,
+                                  }
+                                : undefined
+                          }
+                        >
+                          <div className="relative aspect-[1.15/1] border-b border-current/10 bg-slate-100">
+                            {photo ? (
+                              <Image
+                                src={photo}
+                                alt={`${store.store_name} - miniatura ${index + 1}`}
+                                fill
+                                className={`object-cover transition ${isActive ? 'opacity-90' : 'opacity-100'}`}
+                                sizes="(max-width: 768px) 33vw, 12vw"
+                              />
+                            ) : (
+                              <div className="flex h-full items-center justify-center text-[11px] font-medium text-slate-400">
+                                Sem foto
+                              </div>
+                            )}
+                          </div>
+                          <div className="px-2.5 py-2">
+                            <span className="block text-xs font-semibold">Foto {index + 1}</span>
+                            <span className="mt-0.5 block text-[10px] opacity-80">{index === 0 ? 'Capa' : photo ? 'Galeria' : 'Vazia'}</span>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <aside className="bg-gradient-to-b from-white to-slate-50 p-4 md:p-5">
+                <div className="space-y-5 lg:sticky lg:top-4">
+                  <div>
+                    <h2 className="text-xl font-bold tracking-tight text-slate-900 md:text-2xl">Sobre</h2>
+                    <p className="mt-1.5 text-[13px] leading-6 text-slate-700 whitespace-pre-line md:text-sm">
+                      {showcaseDescription || 'Descrição institucional não adicionada.'}
+                    </p>
+                  </div>
+
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 md:text-lg">Informações</h3>
+                    <div className="mt-3 space-y-3.5">
+                      {store.category && (
+                        <div className="flex gap-3">
+                          <span className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-700">
+                            <IconCategory />
+                          </span>
+                          <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Categoria</p>
+                            <p className="mt-1 text-[13px] font-medium text-slate-900 md:text-sm">{store.category}</p>
+                          </div>
+                        </div>
+                      )}
+                      {(store.address || store.city || store.state) && (
+                        <div className="flex gap-3">
+                          <span className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-700">
+                            <IconLocation />
+                          </span>
+                          <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Localização</p>
+                            {store.address && <p className="mt-1 text-[13px] font-medium text-slate-900 md:text-sm">{store.address}</p>}
+                            {(store.city || store.state) && (
+                              <p className="mt-1 text-[13px] text-slate-600 md:text-sm">{[store.city, store.state].filter(Boolean).join(' - ')}</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {store.business_hours && (
+                        <div className="flex gap-3">
+                          <span className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-700">
+                            <IconClock />
+                          </span>
+                          <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Horário</p>
+                            <p className="mt-1 whitespace-pre-line text-[13px] text-slate-700 md:text-sm">{store.business_hours}</p>
+                          </div>
+                        </div>
+                      )}
+                      {store.email && (
+                        <div className="flex gap-3">
+                          <span className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-700">
+                            <IconMail />
+                          </span>
+                          <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Contato</p>
+                            <a href={`mailto:${store.email}`} className="mt-1 block break-all text-[13px] font-medium text-slate-900 hover:text-slate-700 md:text-sm">
+                              {store.email}
+                            </a>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="border-t border-slate-200 pt-4">
+                    <div className="flex flex-col gap-2.5">
+                    {whatsappUrl && (
+                      <a
+                        href={whatsappUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex w-full items-center gap-3 rounded-xl bg-green-500 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-green-600"
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/16">
+                          <IconWhatsApp />
+                        </span>
+                        <span>WhatsApp</span>
+                      </a>
+                    )}
+                    {instagramUrl && (
+                      <a
+                        href={instagramUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5"
+                        style={{
+                          borderColor: theme.secondary,
+                          color: theme.primary,
+                          background: `linear-gradient(180deg, #ffffff 0%, ${theme.accent}18 100%)`,
+                          boxShadow: `0 10px 24px ${theme.secondary}20`,
+                        }}
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-full" style={{ backgroundColor: `${theme.secondary}20` }}>
+                          <IconInstagram />
+                        </span>
+                        <span>Instagram</span>
+                      </a>
+                    )}
+                    {facebookUrl && (
+                      <a
+                        href={facebookUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5"
+                        style={{
+                          background: `linear-gradient(135deg, ${theme.primary} 0%, ${theme.secondary} 100%)`,
+                          boxShadow: `0 12px 28px ${theme.primary}2B`,
+                        }}
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/16">
+                          <IconFacebook />
+                        </span>
+                        <span>Facebook</span>
+                      </a>
+                    )}
+                    </div>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </section>
+        )}
+
+        <section className={`mb-8 ${isAlimentacao ? 'order-2' : 'order-2'}`}>
         {shouldRenderCatalog ? (
           <>
         {/* Barra de Busca e Filtros */}
@@ -853,10 +1068,10 @@ export default function LojaPublicPage() {
                   onClick={() => setSelectedCategory(cat)}
                   className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${
                     selectedCategory === cat
-                      ? 'text-white'
+                      ? ''
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
-                  style={selectedCategory === cat ? { backgroundColor: theme.primary } : {}}
+                  style={selectedCategory === cat ? { backgroundColor: themeTokens.buttonPrimaryBg, color: themeTokens.buttonPrimaryText } : {}}
                 >
                   {cat === 'all' ? 'Todos' : cat}
                 </button>
@@ -882,78 +1097,104 @@ export default function LojaPublicPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredProducts.map((product) => (
-              <div 
-                key={product.id}
-                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
-              >
-                {/* Imagem do produto */}
-                <div className="relative h-48 bg-gray-100">
-                  {product.images && product.images.length > 0 ? (
-                    <Image 
-                      src={product.images[0]}
-                      alt={product.name}
-                      fill
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="h-full flex items-center justify-center text-gray-400">
-                      {isAlimentacao ? '🍽️' : '📦'}
-                    </div>
-                  )}
-                </div>
-
-                {/* Informações do produto */}
-                <div className="p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    {product.name}
-                  </h3>
-                  
-                  {product.description && (
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                      {product.description}
-                    </p>
-                  )}
-
-                  <div className="flex items-center justify-between mb-3">
-                    {/* Ocultar preço para Pizza */}
-                    {product.category === 'Pizza' ? (
-                      <p className="text-sm text-gray-600 italic">
-                        Clique em Adicionar ao Carrinho para escolher o tamanho e sabores da sua Pizza.
-                      </p>
+              isAlimentacao ? (
+                /* Card compacto horizontal para cardápio */
+                <div
+                  key={product.id}
+                  className="flex flex-row bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
+                >
+                  {/* Thumbnail quadrado */}
+                  <div className="relative w-28 min-w-[112px] self-stretch bg-gray-100">
+                    {product.images && product.images.length > 0 ? (
+                      <Image
+                        src={product.images[0]}
+                        alt={product.name}
+                        fill
+                        className="object-cover"
+                      />
                     ) : (
-                      <>
-                        <span 
-                          className="text-2xl font-bold"
-                          style={{ color: theme.primary }}
-                        >
-                          R$ {product.price.toFixed(2)}
-                        </span>
-
-                        {!isAlimentacao && product.stock_quantity !== null && (
-                          <span className="text-sm text-gray-500">
-                            {product.stock_quantity > 0 
-                              ? `${product.stock_quantity} disponível` 
-                              : 'Esgotado'}
-                          </span>
-                        )}
-                      </>
+                      <div className="flex h-full items-center justify-center text-2xl text-gray-300">🍽️</div>
                     )}
                   </div>
 
-                  {/* Botão de ação unificado */}
-                  <div>
+                  {/* Info */}
+                  <div className="flex flex-col flex-1 p-3 gap-1 min-w-0">
+                    <h3 className="text-sm font-semibold text-gray-900 leading-snug">{product.name}</h3>
+                    {product.description && (
+                      <p className="text-xs text-gray-500 line-clamp-2 flex-1 leading-relaxed">{product.description}</p>
+                    )}
+                    <div className="flex items-center justify-between mt-auto pt-2">
+                      {product.category === 'Pizza' ? (
+                        <span className="text-xs text-gray-500 italic">Escolha tamanho e sabores</span>
+                      ) : (
+                        <span className="text-base font-bold" style={{ color: theme.primary }}>
+                          R$ {product.price.toFixed(2)}
+                        </span>
+                      )}
+                      <button
+                        onClick={() => openProductModal(product)}
+                        className="ml-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity flex-shrink-0"
+                        style={{ backgroundColor: theme.secondary, color: secondaryTextColor }}
+                      >
+                        {product.category === 'Pizza' ? '🍕 Montar' : product.has_variants ? 'Personalizar' : '+ Adicionar'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Card vertical padrão para varejo */
+                <div
+                  key={product.id}
+                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                >
+                  <div className="relative h-48 bg-gray-100">
+                    {product.images && product.images.length > 0 ? (
+                      <Image
+                        src={product.images[0]}
+                        alt={product.name}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-gray-400">📦</div>
+                    )}
+                  </div>
+
+                  <div className="p-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{product.name}</h3>
+                    {product.description && (
+                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
+                    )}
+                    <div className="flex items-center justify-between mb-3">
+                      {product.category === 'Pizza' ? (
+                        <p className="text-sm text-gray-600 italic">
+                          Clique para escolher tamanho e sabores.
+                        </p>
+                      ) : (
+                        <>
+                          <span className="text-2xl font-bold" style={{ color: theme.primary }}>
+                            R$ {product.price.toFixed(2)}
+                          </span>
+                          {product.stock_quantity !== null && (
+                            <span className="text-sm text-gray-500">
+                              {product.stock_quantity > 0 ? `${product.stock_quantity} disponível` : 'Esgotado'}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
                     <button
                       onClick={() => openProductModal(product)}
-                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-white font-medium hover:opacity-90 transition-opacity"
-                      style={{ backgroundColor: theme.secondary }}
+                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity"
+                      style={{ backgroundColor: theme.secondary, color: secondaryTextColor }}
                     >
-                      🛒 Adicionar ao Carrinho
+                      🛒 {product.category === 'Pizza' ? 'Montar pizza' : product.has_variants ? 'Personalizar pedido' : 'Adicionar ao Carrinho'}
                     </button>
                   </div>
                 </div>
-              </div>
+              )
             ))}
           </div>
         )}
@@ -974,19 +1215,36 @@ export default function LojaPublicPage() {
             </p>
           </div>
         )}
+        </section>
 
-        {/* Carrinho Flutuante */}
+        {/* CTA da Sacola */}
         {cart.length > 0 && shouldRenderCatalog && (
-          <button
-            onClick={() => setShowCheckout(true)}
-            className="fixed bottom-6 right-6 bg-green-600 text-white px-6 py-4 rounded-full shadow-lg hover:bg-green-700 transition-colors flex items-center gap-3"
-          >
-            <span className="text-2xl">🛒</span>
-            <div className="text-left">
-              <div className="font-bold">{cart.length} {cart.length === 1 ? 'item' : 'itens'}</div>
-              <div className="text-sm">R$ {cartTotal.toFixed(2)}</div>
-            </div>
-          </button>
+          <>
+            <button
+              onClick={() => setShowCheckout(true)}
+              className="fixed inset-x-4 bottom-4 z-40 flex items-center justify-between rounded-2xl bg-green-600 px-5 py-4 text-white shadow-2xl transition-colors hover:bg-green-700 md:hidden"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🛒</span>
+                <div className="text-left">
+                  <div className="font-bold">{cart.length} {cart.length === 1 ? 'item' : 'itens'}</div>
+                  <div className="text-sm text-white/85">R$ {cartTotal.toFixed(2)}</div>
+                </div>
+              </div>
+              <span className="rounded-full bg-white/15 px-3 py-1 text-sm font-semibold">Ver sacola</span>
+            </button>
+
+            <button
+              onClick={() => setShowCheckout(true)}
+              className="fixed bottom-6 right-6 hidden items-center gap-3 rounded-full bg-green-600 px-6 py-4 text-white shadow-lg transition-colors hover:bg-green-700 md:flex"
+            >
+              <span className="text-2xl">🛒</span>
+              <div className="text-left">
+                <div className="font-bold">{cart.length} {cart.length === 1 ? 'item' : 'itens'}</div>
+                <div className="text-sm">R$ {cartTotal.toFixed(2)}</div>
+              </div>
+            </button>
+          </>
         )}
 
 

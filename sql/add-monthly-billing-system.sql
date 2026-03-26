@@ -2,6 +2,7 @@
 -- COBRANCA MENSAL AUTOMATICA DO PORTAL (LOJISTAS)
 -- Vencimento padrao: dia 15
 -- Lembrete por e-mail: 5 dias antes (dia 10)
+-- Fluxo principal atual: PIX (boleto permanece suportado)
 -- ============================================================
 
 ALTER TABLE stores ADD COLUMN IF NOT EXISTS billing_day SMALLINT DEFAULT 15;
@@ -21,7 +22,7 @@ CREATE TABLE IF NOT EXISTS monthly_billing_invoices (
     CHECK (status IN ('pending', 'paid', 'expired', 'canceled')),
 
   payment_provider VARCHAR(20) DEFAULT 'efi', -- efi | inter
-  payment_method VARCHAR(20) DEFAULT 'boleto', -- boleto
+  payment_method VARCHAR(20) DEFAULT 'pix', -- pix | boleto
 
   provider_charge_id TEXT,
   boleto_barcode TEXT,
@@ -46,6 +47,36 @@ CREATE INDEX IF NOT EXISTS monthly_billing_invoices_due_date_idx
 
 CREATE INDEX IF NOT EXISTS monthly_billing_invoices_status_idx
   ON monthly_billing_invoices(status);
+
+CREATE INDEX IF NOT EXISTS monthly_billing_invoices_provider_charge_idx
+  ON monthly_billing_invoices(provider_charge_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS monthly_billing_invoices_provider_charge_unique_idx
+  ON monthly_billing_invoices(provider_charge_id)
+  WHERE provider_charge_id IS NOT NULL;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'monthly_billing_invoices_payment_provider_check'
+  ) THEN
+    ALTER TABLE monthly_billing_invoices
+      ADD CONSTRAINT monthly_billing_invoices_payment_provider_check
+      CHECK (payment_provider IN ('efi', 'inter'));
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'monthly_billing_invoices_payment_method_check'
+  ) THEN
+    ALTER TABLE monthly_billing_invoices
+      ADD CONSTRAINT monthly_billing_invoices_payment_method_check
+      CHECK (payment_method IN ('pix', 'boleto'));
+  END IF;
+END $$;
 
 ALTER TABLE monthly_billing_invoices ENABLE ROW LEVEL SECURITY;
 

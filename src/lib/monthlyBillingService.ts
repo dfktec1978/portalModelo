@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabaseServer'
-import { createEfiBoletoCharge } from '@/lib/efiPayService'
+import { createEfiBoletoCharge, createEfiPixCharge, type EfiCredentials } from '@/lib/efiPayService'
 
 const PLAN_MONTHLY_PRICE: Record<string, number> = {
   presenca:    0,
@@ -13,6 +13,8 @@ const EXCLUDED_BILLING_SLUGS = new Set(['food', 'lojademo', 'landingpage-demo'])
 type BillingJobOptions = {
   dryRun?: boolean
 }
+
+type BillingPaymentMethod = 'boleto' | 'pix'
 
 type BillingStore = {
   id: string
@@ -36,10 +38,12 @@ type InvoiceRow = {
   owner_id: string | null
   amount: number
   due_date: string
+  payment_method: string | null
   boleto_link: string | null
   boleto_pdf: string | null
   boleto_barcode: string | null
   provider_charge_id: string | null
+  metadata: Record<string, unknown> | null
   reminder_sent_at: string | null
   reference_month: string
   stores?: {
@@ -51,6 +55,13 @@ type InvoiceRow = {
       display_name?: string | null
     } | null
   } | null
+}
+
+type InvoicePixData = {
+  txid: string | null
+  copyPaste: string | null
+  qrCodeUrl: string | null
+  expiresAt: string | null
 }
 
 function firstDayOfMonth(date: Date) {
@@ -69,6 +80,27 @@ function toISODate(date: Date) {
 
 function getPlanMonthlyPrice(plan?: string | null) {
   return PLAN_MONTHLY_PRICE[(plan || 'presenca').toLowerCase()] ?? 0
+}
+
+function getBillingPaymentMethod(): BillingPaymentMethod {
+  const raw = (process.env.BILLING_PAYMENT_METHOD || 'pix').toLowerCase().trim()
+  return raw === 'boleto' ? 'boleto' : 'pix'
+}
+
+function asObject(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  return value as Record<string, unknown>
+}
+
+function getInvoicePixData(metadata: unknown, txidFromRow?: string | null): InvoicePixData {
+  const meta = asObject(metadata)
+  const txid = txidFromRow || (typeof meta.pix_txid === 'string' ? meta.pix_txid : null)
+  return {
+    txid,
+    copyPaste: typeof meta.pix_copy_paste === 'string' ? meta.pix_copy_paste : null,
+    qrCodeUrl: typeof meta.pix_qr_code_url === 'string' ? meta.pix_qr_code_url : null,
+    expiresAt: typeof meta.pix_expires_at === 'string' ? meta.pix_expires_at : null,
+  }
 }
 
 function shouldBillStore(store: BillingStore) {
@@ -136,20 +168,34 @@ async function sendReminderEmail(input: {
   storeName?: string | null
   amount: number
   dueDate: string
+  paymentMethod: BillingPaymentMethod
   boletoLink?: string | null
   boletoPdf?: string | null
   barcode?: string | null
+  pixCopyPaste?: string | null
+  pixQrCodeUrl?: string | null
+  pixExpiresAt?: string | null
 }) {
   const apiKey = process.env.RESEND_API_KEY
   const fromEmail = process.env.BILLING_FROM_EMAIL || 'financeiro@portalmodelo.com.br'
 
   if (!apiKey) {
-    console.warn('[monthly-billing] RESEND_API_KEY não configurada; e-mail não enviado')
-    return { sent: false, reason: 'missing_resend_key' }
+    throw new Error('RESEND_API_KEY não configurada para envio de lembrete')
   }
 
   const owner = input.ownerName || 'Lojista'
   const store = input.storeName || 'sua loja'
+  const paymentInfoHtml = input.paymentMethod === 'pix'
+    ? `
+      ${input.pixQrCodeUrl ? `<p><a href="${input.pixQrCodeUrl}">Abrir QR Code do Pix</a></p>` : ''}
+      ${input.pixCopyPaste ? `<p><strong>Pix Copia e Cola:</strong><br/>${input.pixCopyPaste}</p>` : ''}
+      ${input.pixExpiresAt ? `<p><strong>Validade do Pix:</strong> ${new Date(input.pixExpiresAt).toLocaleString('pt-BR')}</p>` : ''}
+    `
+    : `
+      ${input.boletoLink ? `<p><a href="${input.boletoLink}">Clique aqui para pagar o boleto</a></p>` : ''}
+      ${input.boletoPdf ? `<p><a href="${input.boletoPdf}">Baixar PDF do boleto</a></p>` : ''}
+      ${input.barcode ? `<p><strong>Código de barras:</strong><br/>${input.barcode}</p>` : ''}
+    `
 
   const html = `
     <div style="font-family: Arial, sans-serif; color: #111827; line-height: 1.5;">
@@ -157,9 +203,7 @@ async function sendReminderEmail(input: {
       <p>Olá, ${owner}.</p>
       <p>A mensalidade da loja <strong>${store}</strong> vence em <strong>${input.dueDate}</strong>.</p>
       <p><strong>Valor:</strong> R$ ${input.amount.toFixed(2).replace('.', ',')}</p>
-      ${input.boletoLink ? `<p><a href="${input.boletoLink}">Clique aqui para pagar o boleto</a></p>` : ''}
-      ${input.boletoPdf ? `<p><a href="${input.boletoPdf}">Baixar PDF do boleto</a></p>` : ''}
-      ${input.barcode ? `<p><strong>Código de barras:</strong><br/>${input.barcode}</p>` : ''}
+      ${paymentInfoHtml}
       <p>Este lembrete foi enviado 5 dias antes do vencimento.</p>
     </div>
   `
@@ -186,9 +230,8 @@ async function sendReminderEmail(input: {
   return { sent: true }
 }
 
-async function createGlobalBoleto(amount: number, orderId: string, ownerName: string, ownerEmail: string) {
+function getGlobalEfiCredentials(): EfiCredentials {
   const provider = (process.env.BILLING_PROVIDER || 'efi').toLowerCase()
-
   if (provider !== 'efi') {
     throw new Error('BILLING_PROVIDER=inter ainda não implementado; use BILLING_PROVIDER=efi')
   }
@@ -201,15 +244,21 @@ async function createGlobalBoleto(amount: number, orderId: string, ownerName: st
     throw new Error('EFI_BILLING_CLIENT_ID/EFI_BILLING_CLIENT_SECRET não configurados')
   }
 
+  return {
+    clientId,
+    clientSecret,
+    certificateB64: process.env.EFI_BILLING_CERTIFICATE_B64 || '',
+    sandbox,
+  }
+}
+
+async function createGlobalBoleto(amount: number, orderId: string, ownerName: string, ownerEmail: string) {
+  const creds = getGlobalEfiCredentials()
+
   const cpfFallback = process.env.BILLING_PAYER_CPF_FALLBACK || '11111111111'
 
   const boleto = await createEfiBoletoCharge(
-    {
-      clientId,
-      clientSecret,
-      certificateB64: '',
-      sandbox,
-    },
+    { ...creds, certificateB64: '' },
     {
       name: ownerName || 'Lojista Portal Modelo',
       email: ownerEmail,
@@ -226,6 +275,32 @@ async function createGlobalBoleto(amount: number, orderId: string, ownerName: st
   return boleto
 }
 
+async function createGlobalPix(input: {
+  invoiceId: string
+  amount: number
+  storeName: string
+}) {
+  const creds = getGlobalEfiCredentials()
+  if (!creds.certificateB64) {
+    throw new Error('EFI_BILLING_CERTIFICATE_B64 não configurado para cobrança Pix mensal')
+  }
+
+  const pixKey = (process.env.EFI_BILLING_PIX_KEY || '').trim()
+  if (!pixKey) {
+    throw new Error('EFI_BILLING_PIX_KEY não configurada para cobrança Pix mensal')
+  }
+
+  const charge = await createEfiPixCharge(creds, {
+    orderId: input.invoiceId,
+    amount: input.amount,
+    pixKey,
+    description: `Mensalidade Portal Modelo - ${input.storeName}`,
+    expirationSeconds: 15 * 24 * 60 * 60,
+  })
+
+  return charge
+}
+
 export async function ensureCurrentMonthInvoices(today = new Date(), options: BillingJobOptions = {}) {
   const dryRun = options.dryRun === true
   const monthRef = firstDayOfMonth(today)
@@ -240,6 +315,7 @@ export async function ensureCurrentMonthInvoices(today = new Date(), options: Bi
   }
 
   const candidates = ((stores || []) as BillingStore[]).filter(shouldBillStore)
+  const billingMethod = getBillingPaymentMethod()
 
   let created = 0
   let wouldCreate = 0
@@ -262,7 +338,7 @@ export async function ensureCurrentMonthInvoices(today = new Date(), options: Bi
         amount,
         due_date: dueDate,
         payment_provider: (process.env.BILLING_PROVIDER || 'efi').toLowerCase(),
-        payment_method: 'boleto',
+        payment_method: billingMethod,
         status: 'pending',
       }, { onConflict: 'store_id,reference_month', ignoreDuplicates: true })
 
@@ -282,7 +358,7 @@ export async function processFiveDaysReminders(today = new Date(), options: Bill
 
   const { data: invoices, error } = await supabaseAdmin
     .from('monthly_billing_invoices')
-    .select('id, store_id, owner_id, amount, due_date, boleto_link, boleto_pdf, boleto_barcode, provider_charge_id, reminder_sent_at, reference_month, stores:store_id(slug, store_name, billing_email, profiles:owner_id(email, display_name))')
+    .select('id, store_id, owner_id, amount, due_date, payment_method, boleto_link, boleto_pdf, boleto_barcode, provider_charge_id, metadata, reminder_sent_at, reference_month, stores:store_id(slug, store_name, billing_email, profiles:owner_id(email, display_name))')
     .eq('status', 'pending')
     .eq('due_date', dueDateTarget)
     .is('reminder_sent_at', null)
@@ -301,12 +377,14 @@ export async function processFiveDaysReminders(today = new Date(), options: Bill
   let failed = 0
   let simulatedEmails = 0
   let simulatedBoletos = 0
+  let simulatedPixCharges = 0
 
   for (const inv of rows) {
     try {
       const ownerEmail = inv.stores?.billing_email || inv.stores?.profiles?.email
       const ownerName = inv.stores?.profiles?.display_name || 'Lojista'
       const storeName = inv.stores?.store_name || 'Loja'
+      const paymentMethod = (inv.payment_method === 'boleto' ? 'boleto' : 'pix') as BillingPaymentMethod
 
       if (!ownerEmail) {
         failed += 1
@@ -317,48 +395,91 @@ export async function processFiveDaysReminders(today = new Date(), options: Bill
       let boletoPdf = inv.boleto_pdf
       let barcode = inv.boleto_barcode
       let chargeId = inv.provider_charge_id
+      let pixData = getInvoicePixData(inv.metadata, chargeId)
 
-      if (!boletoLink && !barcode) {
+      if (paymentMethod === 'pix') {
+        if (!pixData.copyPaste || !pixData.txid) {
+          if (dryRun) {
+            simulatedPixCharges += 1
+          } else {
+            const pixCharge = await createGlobalPix({
+              invoiceId: inv.id,
+              amount: inv.amount,
+              storeName,
+            })
+
+            chargeId = pixCharge.txid
+            pixData = {
+              txid: pixCharge.txid,
+              copyPaste: pixCharge.pixCopyPaste,
+              qrCodeUrl: pixCharge.qrCodeImage,
+              expiresAt: pixCharge.expiresAt,
+            }
+
+            await supabaseAdmin
+              .from('monthly_billing_invoices')
+              .update({
+                provider_charge_id: chargeId,
+                metadata: {
+                  ...asObject(inv.metadata),
+                  pix_txid: pixData.txid,
+                  pix_copy_paste: pixData.copyPaste,
+                  pix_qr_code_url: pixData.qrCodeUrl,
+                  pix_expires_at: pixData.expiresAt,
+                },
+              })
+              .eq('id', inv.id)
+          }
+        }
+      } else if (!boletoLink && !barcode) {
         if (dryRun) {
           simulatedBoletos += 1
         } else {
-        const boleto = await createGlobalBoleto(
-          inv.amount,
-          `${inv.reference_month.replace(/-/g, '')}-${inv.store_id.substring(0, 8)}`,
-          ownerName,
-          ownerEmail,
-        )
+          const boleto = await createGlobalBoleto(
+            inv.amount,
+            `${inv.reference_month.replace(/-/g, '')}-${inv.store_id.substring(0, 8)}`,
+            ownerName,
+            ownerEmail,
+          )
 
-        boletoLink = boleto.link
-        boletoPdf = boleto.pdf
-        barcode = boleto.barcode
-        chargeId = String(boleto.chargeId)
+          boletoLink = boleto.link
+          boletoPdf = boleto.pdf
+          barcode = boleto.barcode
+          chargeId = String(boleto.chargeId)
 
-        await supabaseAdmin
-          .from('monthly_billing_invoices')
-          .update({
-            boleto_link: boletoLink,
-            boleto_pdf: boletoPdf,
-            boleto_barcode: barcode,
-            provider_charge_id: chargeId,
-          })
-          .eq('id', inv.id)
+          await supabaseAdmin
+            .from('monthly_billing_invoices')
+            .update({
+              boleto_link: boletoLink,
+              boleto_pdf: boletoPdf,
+              boleto_barcode: barcode,
+              provider_charge_id: chargeId,
+            })
+            .eq('id', inv.id)
         }
       }
 
       if (dryRun) {
         simulatedEmails += 1
       } else {
-        await sendReminderEmail({
+        const emailResult = await sendReminderEmail({
           to: ownerEmail,
           ownerName,
           storeName,
           amount: inv.amount,
           dueDate: inv.due_date,
+          paymentMethod,
           boletoLink,
           boletoPdf,
           barcode,
+          pixCopyPaste: pixData.copyPaste,
+          pixQrCodeUrl: pixData.qrCodeUrl,
+          pixExpiresAt: pixData.expiresAt,
         })
+
+        if (!emailResult?.sent) {
+          throw new Error('Falha ao enviar lembrete de cobrança')
+        }
 
         await supabaseAdmin
           .from('monthly_billing_invoices')
@@ -384,6 +505,7 @@ export async function processFiveDaysReminders(today = new Date(), options: Bill
     failed,
     simulatedEmails,
     simulatedBoletos,
+    simulatedPixCharges,
     dryRun,
   }
 }

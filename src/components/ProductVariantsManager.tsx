@@ -7,6 +7,7 @@ interface Variant {
   size: string;
   color: string;
   stock_quantity: number;
+  critical_stock?: number;
   price_adjustment?: number;
   sku: string;
   images?: string[];
@@ -30,6 +31,10 @@ export default function ProductVariantsManager({ productId, basePrice, sizeGroup
   const [sizeGroup, setSizeGroup] = useState<string>('roupas');
   const [allSizes, setAllSizes] = useState<Array<{ name: string; size_group?: string; display_order?: number }>>([]);
   const [filteredSizes, setFilteredSizes] = useState<Array<{ name: string; size_group?: string; display_order?: number }>>([]);
+  const [bulkSizes, setBulkSizes] = useState('');
+  const [bulkColors, setBulkColors] = useState('');
+  const [bulkStock, setBulkStock] = useState('0');
+  const [bulkAdjustment, setBulkAdjustment] = useState('0');
 
   // Carregar variantes existentes ao editar produto
   useEffect(() => {
@@ -188,11 +193,27 @@ export default function ProductVariantsManager({ productId, basePrice, sizeGroup
       size: '',
       color: '',
       stock_quantity: 0,
+      critical_stock: 0,
       sku: `SKU-${Date.now()}`,
       active: true,
       _isNew: true
     };
     setVariants(prev => [...prev, newVariant]);
+  }
+
+  function duplicateVariant(index: number) {
+    const source = variants[index];
+    const duplicated: Variant = {
+      ...source,
+      id: undefined,
+      _isNew: true,
+      sku: generateSKU(source.size, source.color),
+    };
+    setVariants((prev) => {
+      const next = [...prev];
+      next.splice(index + 1, 0, duplicated);
+      return next;
+    });
   }
 
   function updateVariant(index: number, field: keyof Variant, value: any) {
@@ -209,6 +230,49 @@ export default function ProductVariantsManager({ productId, basePrice, sizeGroup
     return `${s}-${c}-${Date.now().toString().slice(-6)}`;
   }
 
+  function parseBulkValues(value: string) {
+    return value
+      .split(/[\n,;]+/)
+      .map((v) => v.trim())
+      .filter(Boolean);
+  }
+
+  function addBulkVariants() {
+    const sizesFromInput = parseBulkValues(bulkSizes);
+    const colorsFromInput = parseBulkValues(bulkColors);
+    if (sizesFromInput.length === 0 || colorsFromInput.length === 0) return;
+
+    const baseStock = Math.max(0, parseInt(bulkStock, 10) || 0);
+    const adjustment = parseFloat(bulkAdjustment.replace(',', '.')) || 0;
+
+    const existingPairs = new Set(
+      variants.map((v) => `${v.size.trim().toLowerCase()}::${v.color.trim().toLowerCase()}`)
+    );
+
+    const generated: Variant[] = [];
+    for (const size of sizesFromInput) {
+      for (const color of colorsFromInput) {
+        const pair = `${size.trim().toLowerCase()}::${color.trim().toLowerCase()}`;
+        if (existingPairs.has(pair)) continue;
+        existingPairs.add(pair);
+        generated.push({
+          size,
+          color,
+          stock_quantity: baseStock,
+          critical_stock: 0,
+          price_adjustment: adjustment,
+          sku: generateSKU(size, color),
+          active: true,
+          _isNew: true,
+        });
+      }
+    }
+
+    if (generated.length > 0) {
+      setVariants((prev) => [...prev, ...generated]);
+    }
+  }
+
   function autoGenerateSKU(index: number) {
     const variant = variants[index];
     if (variant.size && variant.color) {
@@ -218,6 +282,18 @@ export default function ProductVariantsManager({ productId, basePrice, sizeGroup
   }
 
   const totalStock = variants.reduce((sum, v) => sum + (v.stock_quantity || 0), 0);
+  const invalidCount = variants.filter((v) => !v.size?.trim() || !v.color?.trim() || !v.sku?.trim()).length;
+  const duplicatePairCount = (() => {
+    const seen = new Set<string>();
+    let duplicates = 0;
+    for (const v of variants) {
+      const key = `${(v.size || '').trim().toLowerCase()}::${(v.color || '').trim().toLowerCase()}`;
+      if (!key || key === '::') continue;
+      if (seen.has(key)) duplicates += 1;
+      seen.add(key);
+    }
+    return duplicates;
+  })();
 
   return (
     <div className="border rounded-lg p-4 bg-gray-50">
@@ -245,6 +321,58 @@ export default function ProductVariantsManager({ productId, basePrice, sizeGroup
         </button>
       </div>
 
+      <div className="mb-4 border border-blue-200 rounded-lg bg-blue-50 p-3">
+        <h4 className="text-sm font-semibold text-blue-900 mb-2">Criação em lote por grade</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <input
+            type="text"
+            value={bulkSizes}
+            onChange={(e) => setBulkSizes(e.target.value)}
+            className="border rounded px-2 py-1.5 text-sm text-gray-900"
+            placeholder="Tamanhos: P, M, G"
+          />
+          <input
+            type="text"
+            value={bulkColors}
+            onChange={(e) => setBulkColors(e.target.value)}
+            className="border rounded px-2 py-1.5 text-sm text-gray-900"
+            placeholder="Cores: Preto, Branco"
+          />
+          <input
+            type="number"
+            min="0"
+            value={bulkStock}
+            onChange={(e) => setBulkStock(e.target.value)}
+            className="border rounded px-2 py-1.5 text-sm text-gray-900"
+            placeholder="Estoque padrão"
+          />
+          <input
+            type="text"
+            value={bulkAdjustment}
+            onChange={(e) => setBulkAdjustment(e.target.value)}
+            className="border rounded px-2 py-1.5 text-sm text-gray-900"
+            placeholder="Ajuste padrão (ex: 5.00 ou -2.50)"
+          />
+        </div>
+        <div className="mt-2 flex items-center justify-between">
+          <p className="text-xs text-blue-700">Use vírgula, ponto e vírgula ou quebra de linha para separar.</p>
+          <button
+            type="button"
+            onClick={addBulkVariants}
+            className="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+          >
+            Gerar grade
+          </button>
+        </div>
+      </div>
+
+      {(invalidCount > 0 || duplicatePairCount > 0) && (
+        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          {invalidCount > 0 && <div>Há {invalidCount} variante(s) com campos obrigatórios pendentes.</div>}
+          {duplicatePairCount > 0 && <div>Há {duplicatePairCount} combinação(ões) repetida(s) de cor e tamanho.</div>}
+        </div>
+      )}
+
       {loading ? (
         <div className="text-center py-8 text-gray-500">Carregando variantes...</div>
       ) : variants.length === 0 ? (
@@ -255,7 +383,7 @@ export default function ProductVariantsManager({ productId, basePrice, sizeGroup
       ) : (
         <div className="space-y-3 max-h-96 overflow-y-auto">
           {variants.map((variant, index) => (
-            <div key={variant.id || index} className="bg-white border rounded-lg p-3 grid grid-cols-12 gap-2 items-center">
+            <div key={variant.id || index} className={`bg-white border rounded-lg p-3 grid grid-cols-12 gap-2 items-center ${(!variant.size?.trim() || !variant.color?.trim() || !variant.sku?.trim()) ? 'border-red-300' : ''}`}>
               {(() => {
                 const normalizedColor = (variant.color || '').trim().toLowerCase();
                 const hasColorOption = colorOptions.some(
@@ -371,6 +499,19 @@ export default function ProductVariantsManager({ productId, basePrice, sizeGroup
                 />
               </div>
 
+              {/* Estoque Crítico */}
+              <div className="col-span-2">
+                <label className="text-xs text-gray-600 block mb-1">Crítico</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={variant.critical_stock ?? ''}
+                  onChange={(e) => updateVariant(index, 'critical_stock', e.target.value ? parseInt(e.target.value) : undefined)}
+                  className="w-full border rounded px-2 py-1 text-sm text-gray-900"
+                  placeholder="0"
+                />
+              </div>
+
               {/* Ajuste de Preço (opcional) */}
               <div className="col-span-2">
                 <label className="text-xs text-gray-600 block mb-1">
@@ -387,7 +528,7 @@ export default function ProductVariantsManager({ productId, basePrice, sizeGroup
               </div>
 
               {/* SKU */}
-              <div className="col-span-3">
+              <div className="col-span-2">
                 <label className="text-xs text-gray-600 block mb-1">SKU</label>
                 <input
                   type="text"
@@ -399,17 +540,29 @@ export default function ProductVariantsManager({ productId, basePrice, sizeGroup
               </div>
 
               {/* Botão Remover */}
-              <div className="col-span-1 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => removeVariant(index)}
-                  className="p-1.5 text-red-600 hover:bg-red-50 rounded"
-                  title="Remover variante"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
+              <div className="col-span-2 flex justify-end">
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => duplicateVariant(index)}
+                    className="p-1.5 text-purple-600 hover:bg-purple-50 rounded"
+                    title="Duplicar variante"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2M10 20h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeVariant(index)}
+                    className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                    title="Remover variante"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
               </div>
                   </>
                 );

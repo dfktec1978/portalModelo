@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { ordersDashboardTokens as ui } from '@/components/ordersDashboardTokens'
 
 type Props = {
   store: any
@@ -132,16 +133,16 @@ export default function StoreFinanceModule({ store }: Props) {
 
   if (!store) {
     return (
-      <div className="bg-white p-6 rounded-lg border border-gray-200">
+      <div className={`${ui.panel} p-6`}>
         <p className="text-sm text-gray-600">Selecione uma loja para ver o financeiro.</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className={ui.stack}>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className={ui.headerRow}>
         <div>
           <h3 className="text-xl font-semibold mb-1">💰 Financeiro</h3>
           <p className="text-sm text-gray-600">Resumo financeiro da sua loja</p>
@@ -160,25 +161,25 @@ export default function StoreFinanceModule({ store }: Props) {
         <>
           {/* Cards Principais */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-6 bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg">
+            <div className={`${ui.statCard} p-6 bg-gradient-to-br from-green-50 to-green-100 border-green-200`}>
               <div className="text-sm text-green-700 mb-1">💵 Vendas Totais</div>
               <div className="text-2xl font-bold text-green-900">{formatCurrency(stats.totalSales)}</div>
               <div className="text-xs text-green-600 mt-1">{stats.totalOrders} pedidos</div>
             </div>
 
-            <div className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg">
+            <div className={`${ui.statCard} p-6 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200`}>
               <div className="text-sm text-blue-700 mb-1">📊 Ticket Médio</div>
               <div className="text-2xl font-bold text-blue-900">{formatCurrency(stats.averageTicket)}</div>
               <div className="text-xs text-blue-600 mt-1">por pedido</div>
             </div>
 
-            <div className="p-6 bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 rounded-lg">
+            <div className={`${ui.statCard} p-6 bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200`}>
               <div className="text-sm text-yellow-700 mb-1">⏳ Pagamentos Pendentes</div>
               <div className="text-2xl font-bold text-yellow-900">{formatCurrency(stats.pendingPayments)}</div>
               <div className="text-xs text-yellow-600 mt-1">a receber</div>
             </div>
 
-            <div className="p-6 bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg">
+            <div className={`${ui.statCard} p-6 bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200`}>
               <div className="text-sm text-purple-700 mb-1">✅ Pedidos Pagos</div>
               <div className="text-2xl font-bold text-purple-900">{stats.paidOrders}</div>
               <div className="text-xs text-purple-600 mt-1">confirmados</div>
@@ -187,7 +188,7 @@ export default function StoreFinanceModule({ store }: Props) {
 
           {/* Comparação Mensal */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-6 bg-white border border-gray-200 rounded-lg">
+            <div className={`${ui.panel} p-6`}>
               <h4 className="font-semibold text-gray-900 mb-4">📅 Este Mês</h4>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
@@ -212,7 +213,7 @@ export default function StoreFinanceModule({ store }: Props) {
               </div>
             </div>
 
-            <div className="p-6 bg-white border border-gray-200 rounded-lg">
+            <div className={`${ui.panel} p-6`}>
               <h4 className="font-semibold text-gray-900 mb-4">📅 Mês Anterior</h4>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
@@ -228,12 +229,12 @@ export default function StoreFinanceModule({ store }: Props) {
           </div>
 
           {/* Últimos Pedidos Pagos */}
-          <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <div className={`${ui.panel} p-6`}>
             <h4 className="font-semibold text-gray-900 mb-4">💳 Últimos Pedidos Pagos</h4>
             {orders.filter(o => o.payment_status === 'paid').slice(0, 5).length === 0 ? (
               <p className="text-sm text-gray-500">Nenhum pedido pago ainda</p>
             ) : (
-              <div className="space-y-2">
+              <div className={ui.listContainer}>
                 {orders.filter(o => o.payment_status === 'paid').slice(0, 5).map((order) => (
                   <div key={order.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                     <div className="flex-1">

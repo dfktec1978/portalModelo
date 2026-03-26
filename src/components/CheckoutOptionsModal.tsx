@@ -29,6 +29,7 @@ type CheckoutOptionsModalProps = {
     }
   }) => Promise<void> | void
   storeConfig: {
+    category?: string
     delivery_options: {
       retirada: boolean
       envio: boolean
@@ -52,6 +53,14 @@ type CheckoutOptionsModalProps = {
   onRemoveItemAction?: (cartId: number) => void
 }
 
+const getTodayDate = () => new Date().toISOString().split('T')[0]
+
+const getTomorrowDate = () => {
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  return tomorrow.toISOString().split('T')[0]
+}
+
 export default function CheckoutOptionsModal({
   isOpen,
   onCloseAction,
@@ -66,6 +75,7 @@ export default function CheckoutOptionsModal({
 }: CheckoutOptionsModalProps) {
   const availableDelivery = storeConfig.delivery_options
   const availablePayments = storeConfig.payment_options
+  const isFoodStore = storeConfig.category === 'alimentacao'
 
   const initialDelivery = useMemo<DeliveryOption>(() => {
     if (availableDelivery.retirada) return 'retirada'
@@ -79,11 +89,8 @@ export default function CheckoutOptionsModal({
   }, [availablePayments])
 
   const [selectedDelivery, setSelectedDelivery] = useState<DeliveryOption>(initialDelivery)
-  const [deliveryDate, setDeliveryDate] = useState<string>(() => {
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    return tomorrow.toISOString().split('T')[0]
-  })
+  const [scheduleMode, setScheduleMode] = useState<'now' | 'scheduled'>(isFoodStore ? 'now' : 'scheduled')
+  const [deliveryDate, setDeliveryDate] = useState<string>(() => (isFoodStore ? getTodayDate() : getTomorrowDate()))
   const [deliveryTime, setDeliveryTime] = useState<string>('14:00')
   const [address, setAddress] = useState<string>('')
   const [selectedPayment, setSelectedPayment] = useState<PaymentMethod>(initialPayment)
@@ -91,6 +98,13 @@ export default function CheckoutOptionsModal({
   const [errorMsg, setErrorMsg] = useState<string>('')
   const [clientData, setClientData] = useState<{ name: string; email: string; phone: string } | null>(null)
   const [loadingClient, setLoadingClient] = useState(false)
+
+  useEffect(() => {
+    if (isFoodStore) {
+      setScheduleMode('now')
+      setDeliveryDate(getTodayDate())
+    }
+  }, [isFoodStore])
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -165,7 +179,7 @@ export default function CheckoutOptionsModal({
       return
     }
 
-    if (!deliveryDate) {
+    if ((!isFoodStore || scheduleMode === 'scheduled') && !deliveryDate) {
       setErrorMsg('Selecione uma data de entrega')
       return
     }
@@ -187,7 +201,9 @@ export default function CheckoutOptionsModal({
       fee = storeConfig.delivery_fee_condicional || 0
     }
 
-    const dateTime = new Date(`${deliveryDate}T${deliveryTime}:00`)
+    const dateTime = isFoodStore && scheduleMode === 'now'
+      ? new Date()
+      : new Date(`${deliveryDate}T${deliveryTime}:00`)
 
     await onConfirmAction({
       delivery: {
@@ -387,30 +403,67 @@ export default function CheckoutOptionsModal({
               </label>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">📅 Data</label>
-                <input
-                  type="date"
-                  value={deliveryDate}
-                  onChange={(e) => setDeliveryDate(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">🕐 Horário</label>
-                <select
-                  value={deliveryTime}
-                  onChange={(e) => setDeliveryTime(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            {isFoodStore && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setScheduleMode('now')}
+                  className={`rounded-xl border px-4 py-3 text-left transition ${
+                    scheduleMode === 'now'
+                      ? 'border-emerald-600 bg-emerald-50 text-emerald-900'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                  }`}
                 >
-                  {['09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00'].map(time => (
-                    <option key={time} value={time}>{time}</option>
-                  ))}
-                </select>
+                  <div className="font-semibold">Pedir agora</div>
+                  <div className="text-sm opacity-80">Preparo imediato e envio assim que possível</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScheduleMode('scheduled')}
+                  className={`rounded-xl border px-4 py-3 text-left transition ${
+                    scheduleMode === 'scheduled'
+                      ? 'border-[#003049] bg-slate-50 text-slate-900'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="font-semibold">Agendar pedido</div>
+                  <div className="text-sm opacity-80">Escolha data e horário para entrega ou retirada</div>
+                </button>
               </div>
-            </div>
+            )}
+
+            {(!isFoodStore || scheduleMode === 'scheduled') && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">📅 Data</label>
+                  <input
+                    type="date"
+                    value={deliveryDate}
+                    onChange={(e) => setDeliveryDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">🕐 Horário</label>
+                  <select
+                    value={deliveryTime}
+                    onChange={(e) => setDeliveryTime(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {['09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00'].map(time => (
+                      <option key={time} value={time}>{time}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {isFoodStore && scheduleMode === 'now' && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+                Seu pedido será enviado para preparo imediato após a confirmação.
+              </div>
+            )}
 
             {selectedDelivery === 'envio' && (
               <div>

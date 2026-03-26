@@ -4,8 +4,8 @@ import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
 import StorePanelSidebar from "@/components/StorePanelSidebar";
 import StoreAppearance from "@/components/StoreAppearance";
-import StoreProductsModule from "@/components/StoreProductsModule";
-import StoreMenuModule from "@/components/StoreMenuModule";
+import StoreModuleProducts from "@/components/StoreModuleProducts";
+import StoreModuleMenu from "@/components/StoreModuleMenu";
 import StoreOverview from "@/components/StoreOverview";
 import StoreOrdersModule from "@/components/StoreOrdersModule";
 import StoreFinanceModule from "@/components/StoreFinanceModule";
@@ -99,11 +99,11 @@ export default function LojaDashboardPage() {
           )}
 
           {view === 'products' && category === 'varejo' && (
-            <StoreProductsModule storeSlug={selectedStore?.slug || selectedStore?.id} store={selectedStore} />
+            <StoreModuleProducts store={selectedStore} />
           )}
 
           {view === 'menu' && category === 'alimentacao' && (
-            <StoreMenuModule storeSlug={selectedStore?.slug || selectedStore?.id} store={selectedStore} />
+            <StoreModuleMenu store={selectedStore} />
           )}
 
           {view === 'payments' && <StorePaymentSettings store={selectedStore} />}

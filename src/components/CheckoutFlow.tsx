@@ -5,6 +5,7 @@ import { useCheckout } from '@/lib/useCheckout'
 import PixPaymentDisplay from './PixPaymentDisplay'
 import CheckoutOptionsModal from './CheckoutOptionsModal'
 import { supabase } from '@/lib/supabaseClient'
+import { getReadableTextColor, getTheme, PORTAL_THEMES, ThemeColor } from '@/lib/themes'
 
 type CheckoutFlowProps = {
   storeId: string
@@ -14,6 +15,13 @@ type CheckoutFlowProps = {
   onCheckoutCancelAction?: () => void
   onUpdateCartQuantityAction?: (cartId: number, nextQty: number) => void
   onRemoveCartItemAction?: (cartId: number) => void
+}
+
+function resolveThemeId(themeColor?: string | null): ThemeColor {
+  if (themeColor && themeColor in PORTAL_THEMES) {
+    return themeColor as ThemeColor
+  }
+  return 'azul'
 }
 
 export default function CheckoutFlow({
@@ -73,6 +81,7 @@ export default function CheckoutFlow({
     return {
       id: data?.id || storeId,
       store_name: data?.store_name || 'Loja',
+      theme_color: data?.theme_color || 'azul',
       category: data?.category || 'varejo',
       delivery_options: normalizedDelivery,
       delivery_fee_envio: data?.delivery_fee_envio || 0,
@@ -193,11 +202,16 @@ export default function CheckoutFlow({
     }
   }
 
+  const themeConfig = getTheme(resolveThemeId(storeConfig?.theme_color))
+  const theme = themeConfig.colors
+  const primaryTextColor = getReadableTextColor(theme.primary)
+  const secondaryTextColor = getReadableTextColor(theme.secondary)
+
   if (loadingConfig) {
     return (
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl p-8 max-w-md text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: `${theme.secondary} transparent transparent transparent` }}></div>
           <p className="text-gray-600">Carregando configurações da loja...</p>
         </div>
       </div>
@@ -230,23 +244,27 @@ export default function CheckoutFlow({
   // Estado: Exibição de QR Code Pix
   if (checkout.currentStep === 'pix' && checkout.orderData && pixData) {
     return (
-      <PixPaymentDisplay
-        orderId={checkout.orderData.id}
-        pixQrCode={checkout.orderData.pix_qr_code || ''}
-        pixQrCodeUrl={
-          isValidQrCodeUrl(checkout.orderData.pix_qr_code_url)
-            ? checkout.orderData.pix_qr_code_url || ''
-            : isValidQrCodeUrl(checkout.orderData.pix_qr_code)
-              ? checkout.orderData.pix_qr_code || ''
-              : ''
-        }
-        pixCopyPaste={checkout.orderData.pix_copy_paste || ''}
-        amount={cartTotal}
-        storePixKey={storeConfig.pix_key}
-        expiresAt={pixData.expiresAt}
-        onPaymentConfirmedAction={handlePixConfirmed}
-        onCancelAction={handleCancel}
-      />
+      <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="my-auto w-full max-w-md">
+          <PixPaymentDisplay
+            orderId={checkout.orderData.id}
+            pixQrCode={checkout.orderData.pix_qr_code || ''}
+            pixQrCodeUrl={
+              isValidQrCodeUrl(checkout.orderData.pix_qr_code_url)
+                ? checkout.orderData.pix_qr_code_url || ''
+                : isValidQrCodeUrl(checkout.orderData.pix_qr_code)
+                  ? checkout.orderData.pix_qr_code || ''
+                  : ''
+            }
+            pixCopyPaste={checkout.orderData.pix_copy_paste || ''}
+            amount={cartTotal}
+            storePixKey={storeConfig.pix_key}
+            expiresAt={pixData.expiresAt}
+            onPaymentConfirmedAction={handlePixConfirmed}
+            onCancelAction={handleCancel}
+          />
+        </div>
+      </div>
     )
   }
 
@@ -256,13 +274,13 @@ export default function CheckoutFlow({
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl p-8 max-w-md text-center">
           <div className="text-6xl mb-4">✅</div>
-          <h2 className="text-2xl font-bold text-green-600 mb-2">Pedido Confirmado!</h2>
+          <h2 className="text-2xl font-bold mb-2" style={{ color: theme.secondary }}>Pedido Confirmado!</h2>
           <p className="text-gray-600 mb-6">
             Seu pedido #<strong>{checkout.orderData.id.substring(0, 8).toUpperCase()}</strong> foi criado com sucesso.
           </p>
 
           {checkout.deliveryData && (
-            <div className="bg-blue-50 rounded-lg p-4 mb-6 text-left space-y-2 text-sm">
+            <div className="rounded-lg p-4 mb-6 text-left space-y-2 text-sm" style={{ backgroundColor: theme.card, border: `1px solid ${theme.primary}22` }}>
               <p>
                 <strong>Entrega:</strong>{' '}
                 {checkout.deliveryData.type === 'retirada'
@@ -288,7 +306,8 @@ export default function CheckoutFlow({
                 onCheckoutCompleteAction(checkout.orderData.id)
               }
             }}
-            className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors"
+            className="w-full px-4 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: theme.primary, color: primaryTextColor }}
           >
             Voltar à Loja
           </button>

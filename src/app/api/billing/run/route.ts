@@ -7,13 +7,19 @@ import {
 
 function isAuthorized(request: NextRequest) {
   const secret = process.env.BILLING_CRON_SECRET
-  if (!secret) return false
+  // CRON_SECRET é a variável nativa do Vercel — injetada automaticamente nos cron jobs
+  const vercelCronSecret = process.env.CRON_SECRET
+
+  if (!secret && !vercelCronSecret) return false
 
   const headerSecret = request.headers.get('x-cron-secret')
   const authHeader = request.headers.get('authorization')
   const bearer = authHeader?.startsWith('Bearer ') ? authHeader.replace('Bearer ', '') : null
 
-  return headerSecret === secret || bearer === secret
+  const validBilling = !!secret && (headerSecret === secret || bearer === secret)
+  const validVercel = !!vercelCronSecret && bearer === vercelCronSecret
+
+  return validBilling || validVercel
 }
 
 async function resolveDryRun(request: NextRequest) {

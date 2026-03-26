@@ -25,7 +25,6 @@ export default function StorePanelSidebar({ view, setView, selectedStoreSlug, se
     (async () => {
       try {
         if (!user) return;
-        console.log('🔍 StorePanelSidebar: Buscando lojas para user.id:', user.id);
         const selectWithPlans = 'id, slug, store_name, phone, address, status, category, logo_url, plan, plan_status, product_limit, photo_limit, priority_weight';
         const selectLegacy = 'id, slug, store_name, phone, address, status, category, logo_url';
 
@@ -56,8 +55,6 @@ export default function StorePanelSidebar({ view, setView, selectedStoreSlug, se
           return;
         }
         
-        console.log('📊 Lojas retornadas do banco:', data?.length || 0, data);
-        
         if (!mounted) return;
         
         // Filtrar apenas lojas ativas ou pendentes
@@ -70,11 +67,9 @@ export default function StorePanelSidebar({ view, setView, selectedStoreSlug, se
             slug: s.slug || s.id
           }));
         
-        console.log('✅ Lojas após filtro (não bloqueadas):', arr.length, arr);
         setStores(arr);
         
         if (arr.length === 1 && setSelectedStoreSlug) {
-          console.log('🎯 Selecionando loja automaticamente:', arr[0].slug || arr[0].id);
           setSelectedStoreSlug(arr[0].slug || arr[0].id);
         }
       } catch (e) {
@@ -115,7 +110,7 @@ export default function StorePanelSidebar({ view, setView, selectedStoreSlug, se
   const canManageLandingProfile = ['landingpage', 'destaque', 'premium'].includes(normalizedPlan);
 
   return (
-    <aside className="w-64 flex flex-col gap-4">
+    <aside className="w-64 min-w-64 max-w-64 shrink-0 flex flex-col gap-4">
       {/* Card Meu Perfil */}
       <div className="bg-slate-700 text-white p-4 rounded-lg shadow">
         <h2 className="text-lg font-semibold mb-3">Meu Perfil</h2>
@@ -126,7 +121,7 @@ export default function StorePanelSidebar({ view, setView, selectedStoreSlug, se
           </div>
           <div>
             <div className="text-slate-400 text-xs">E-mail</div>
-            <div className="font-medium text-xs">{user?.email || 'Carregando...'}</div>
+            <div className="font-medium text-xs break-all">{user?.email || 'Carregando...'}</div>
           </div>
           <div>
             <div className="text-slate-400 text-xs">Telefone</div>

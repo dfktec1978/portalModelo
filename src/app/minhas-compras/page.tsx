@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
@@ -62,6 +62,9 @@ export default function MinhasComprasPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
+  const [recentlyUpdatedId, setRecentlyUpdatedId] = useState<string | null>(null);
+  const userIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const loadOrders = async () => {
@@ -112,6 +115,9 @@ export default function MinhasComprasPage() {
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         });
         setOrders(list);
+
+        // Guardar userId para usar na assinatura Realtime
+        userIdRef.current = user.id;
       } catch (err: any) {
         setError(err?.message || "Erro ao carregar pedidos");
       } finally {
@@ -121,6 +127,52 @@ export default function MinhasComprasPage() {
 
     loadOrders();
   }, [router]);
+
+  // Assinatura Realtime — abre assim que userIdRef estiver preenchido
+  useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const setupRealtime = () => {
+      const uid = userIdRef.current;
+      if (!uid) return;
+
+      channel = supabase
+        .channel(`orders-customer-${uid}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'orders',
+            filter: `customer_id=eq.${uid}`
+          },
+          (payload) => {
+            const updated = payload.new as any;
+            setOrders((prev) =>
+              prev.map((o) => (o.id === updated.id ? { ...o, ...updated } : o))
+            );
+            setRecentlyUpdatedId(updated.id);
+            setTimeout(() => setRecentlyUpdatedId(null), 4000);
+          }
+        )
+        .subscribe((status) => {
+          setRealtimeConnected(status === 'SUBSCRIBED');
+        });
+    };
+
+    // Tenta imediatamente; se userId ainda não estiver pronto, tenta novamente após carregamento
+    if (userIdRef.current) {
+      setupRealtime();
+    } else {
+      const timer = setTimeout(setupRealtime, 1500);
+      return () => clearTimeout(timer);
+    }
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+      setRealtimeConnected(false);
+    };
+  }, [loading]); // re-executa depois que loadOrders terminar
 
   const restoreStock = async (order: any) => {
     if (!order?.items) return;
@@ -189,6 +241,28 @@ export default function MinhasComprasPage() {
         .update({ status: "cancelled" })
         .eq("id", order.id);
 
+      // Fallback de polling: re-busca pedidos a cada 30s e ao focar a janela
+      useEffect(() => {
+        const uid = userIdRef.current;
+        if (!uid) return;
+
+        const silentRefresh = async () => {
+          const { data } = await supabase
+            .from("orders")
+            .select("*, stores:store_id (id, store_name, slug, category)")
+            .eq("customer_id", uid)
+            .order("created_at", { ascending: false });
+          if (data) setOrders(data);
+        };
+
+        const interval = setInterval(silentRefresh, 30000);
+        const onFocus = () => silentRefresh();
+        window.addEventListener('focus', onFocus);
+        return () => {
+          clearInterval(interval);
+          window.removeEventListener('focus', onFocus);
+        };
+      }, [loading]); // inicia depois da carga inicial
       if (updateError) throw updateError;
 
       await restoreStock(order);
@@ -206,8 +280,16 @@ export default function MinhasComprasPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-gray-900">Minhas Compras</h1>
-        <p className="text-sm text-gray-600 mt-1">Acompanhe o status dos seus pedidos</p>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-gray-900">Minhas Compras</h1>
+          <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${
+            realtimeConnected ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${realtimeConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
+            {realtimeConnected ? 'Ao vivo' : '—'}
+          </span>
+        </div>
+        <p className="text-sm text-gray-600 mt-1">Acompanhe o status dos seus pedidos em tempo real</p>
 
         {loading && (
           <div className="mt-6 text-gray-500">Carregando pedidos...</div>
@@ -238,15 +320,26 @@ export default function MinhasComprasPage() {
             const highlightGreen = ["pending", "confirmed", "preparing", "ready"].includes(normalizedStatus);
             const highlightYellow = normalizedStatus === "out_for_delivery";
 
+            const wasJustUpdated = recentlyUpdatedId === order.id;
+
             return (
               <div
                 key={order.id}
-                className={`rounded-lg border p-4 ${highlightGreen ? "bg-green-50 border-green-200" : highlightYellow ? "bg-yellow-50 border-yellow-200" : "bg-white border-gray-200"}`}
+                className={`rounded-lg border p-4 transition-all duration-500 ${
+                  wasJustUpdated
+                    ? 'ring-2 ring-blue-400 bg-blue-50 border-blue-300'
+                    : highlightGreen ? 'bg-green-50 border-green-200' : highlightYellow ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-gray-200'
+                }`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="font-semibold text-gray-900">
-                      {order?.stores?.store_name || "Loja"}
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-900">{order?.stores?.store_name || "Loja"}</span>
+                      {wasJustUpdated && (
+                        <span className="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium animate-pulse">
+                          ⚡ Atualizado
+                        </span>
+                      )}
                     </div>
                     <div className="text-sm text-gray-600 mt-1">
                       Status: <strong>{statusEmoji} {statusLabel}</strong>

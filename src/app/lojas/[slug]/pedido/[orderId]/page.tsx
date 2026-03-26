@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import Link from 'next/link'
+import { getReadableTextColor, getTheme, PORTAL_THEMES, ThemeColor } from '@/lib/themes'
 
 type Order = {
   id: string
@@ -26,6 +27,13 @@ type Order = {
   notes?: string
 }
 
+function resolveThemeId(themeColor?: string | null): ThemeColor {
+  if (themeColor && themeColor in PORTAL_THEMES) {
+    return themeColor as ThemeColor
+  }
+  return 'azul'
+}
+
 export default function PedidoPage() {
   const router = useRouter()
   const params = useParams()
@@ -38,6 +46,11 @@ export default function PedidoPage() {
   const [copied, setCopied] = useState(false)
   const [resolvedStoreId, setResolvedStoreId] = useState<string | null>(null)
   const [storeSlug, setStoreSlug] = useState<string | null>(null)
+  const [storeThemeColor, setStoreThemeColor] = useState<string>('azul')
+
+  const themeConfig = getTheme(resolveThemeId(storeThemeColor))
+  const theme = themeConfig.colors
+  const primaryTextColor = getReadableTextColor(theme.primary)
 
   useEffect(() => {
     if (!storeParam) return
@@ -45,7 +58,7 @@ export default function PedidoPage() {
     const resolveStore = async () => {
       const { data } = await supabase
         .from('stores')
-        .select('id, slug')
+        .select('id, slug, theme_color')
         .or(`id.eq.${storeParam},slug.eq.${storeParam}`)
         .maybeSingle()
 
@@ -57,6 +70,9 @@ export default function PedidoPage() {
 
       if (data?.slug) {
         setStoreSlug(data.slug)
+      }
+      if (data?.theme_color) {
+        setStoreThemeColor(data.theme_color)
       }
     }
 
@@ -104,9 +120,9 @@ export default function PedidoPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: `linear-gradient(135deg, ${theme.card} 0%, ${theme.background} 100%)` }}>
         <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto mb-6"></div>
+          <div className="animate-spin rounded-full h-16 w-16 border-4 mx-auto mb-6" style={{ borderColor: `${theme.primary}33`, borderTopColor: theme.primary }}></div>
           <p className="text-gray-600 text-lg">Carregando detalhes do pedido...</p>
         </div>
       </div>
@@ -115,14 +131,15 @@ export default function PedidoPage() {
 
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: `linear-gradient(135deg, ${theme.card} 0%, ${theme.background} 100%)` }}>
         <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md text-center">
           <div className="text-5xl mb-4">❌</div>
-          <h1 className="text-2xl font-bold text-red-600 mb-2">Erro ao Carregar Pedido</h1>
+          <h1 className="text-2xl font-bold mb-2" style={{ color: theme.secondary }}>Erro ao Carregar Pedido</h1>
           <p className="text-gray-600 mb-6">{error || 'Pedido não encontrado'}</p>
           <Link
             href={`/lojas/${storeSlug || storeParam}`}
-            className="inline-block px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors"
+            className="inline-block px-6 py-3 rounded-xl font-bold hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: theme.primary, color: primaryTextColor }}
           >
             Voltar para Loja
           </Link>
@@ -155,15 +172,15 @@ export default function PedidoPage() {
   }, 0)
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 py-8">
+    <main className="min-h-screen py-8" style={{ background: `linear-gradient(135deg, ${theme.card} 0%, ${theme.background} 100%)` }}>
       <div className="max-w-2xl mx-auto px-4">
         {/* Success Header */}
-        <div className="bg-white rounded-3xl shadow-2xl p-8 mb-6 text-center border-t-8 border-green-500">
+        <div className="bg-white rounded-3xl shadow-2xl p-8 mb-6 text-center border-t-8" style={{ borderTopColor: theme.primary }}>
           <div className="text-6xl mb-4">✅</div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Pedido Recebido!</h1>
           <p className="text-gray-600 text-lg">Obrigado por sua compra</p>
-          <div className="mt-4 p-4 bg-green-50 rounded-xl border border-green-200">
-            <p className="text-green-700 font-bold text-lg">Pedido #{order.id}</p>
+          <div className="mt-4 p-4 rounded-xl border" style={{ backgroundColor: theme.card, borderColor: `${theme.primary}33` }}>
+            <p className="font-bold text-lg" style={{ color: theme.primary }}>Pedido #{order.id}</p>
           </div>
         </div>
 

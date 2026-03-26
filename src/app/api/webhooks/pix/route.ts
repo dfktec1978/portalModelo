@@ -63,6 +63,20 @@ async function updateOrderStatus(orderId: string, normalizedOrderStatus: string,
   }
 }
 
+function normalizeBillingStatusFromPix(status?: string) {
+  const value = (status || '').toLowerCase()
+  if (['paid', 'approved', 'confirmed', 'recebido', 'concluida', 'concluido'].includes(value)) {
+    return 'paid'
+  }
+  if (['expired', 'expirado'].includes(value)) {
+    return 'expired'
+  }
+  if (['canceled', 'cancelled', 'cancelado'].includes(value)) {
+    return 'canceled'
+  }
+  return 'pending'
+}
+
 export async function POST(request: NextRequest) {
   try {
     const configuredSecret = process.env.PIX_WEBHOOK_SECRET
@@ -85,6 +99,38 @@ export async function POST(request: NextRequest) {
 
     const normalized = normalizeStatus(payload.status)
     const paidAt = normalized.paid ? payload.paidAt || new Date().toISOString() : null
+
+    if (transactionId) {
+      const billingStatus = normalizeBillingStatusFromPix(payload.status)
+      const billingUpdate: Record<string, unknown> = {
+        status: billingStatus,
+        updated_at: new Date().toISOString(),
+      }
+
+      if (billingStatus === 'paid') {
+        billingUpdate.paid_at = paidAt
+      }
+
+      const { data: updatedInvoice, error: billingError } = await supabaseAdmin
+        .from('monthly_billing_invoices')
+        .update(billingUpdate)
+        .eq('provider_charge_id', transactionId)
+        .select('id')
+        .maybeSingle()
+
+      if (billingError && billingError.code !== 'PGRST116') {
+        throw new Error(billingError.message)
+      }
+
+      if (updatedInvoice?.id) {
+        return NextResponse.json({
+          ok: true,
+          invoiceId: updatedInvoice.id,
+          transactionId,
+          status: billingStatus,
+        })
+      }
+    }
 
     let orderId = payload.orderId || null
 

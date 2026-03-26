@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabaseClient'
 import InfoBanner from '@/components/InfoBanner'
 import { getPlanConfig, getPlanDefaults, getPlanTransition, normalizeStorePlan } from '@/lib/storePlans'
 import { useStorePlans } from '@/lib/useStorePlans'
+import { ordersDashboardTokens as ui } from '@/components/ordersDashboardTokens'
 
 type Props = {
   store: any
@@ -223,14 +224,14 @@ export default function StoreSettings({ store, onStoreUpdated }: Props) {
 
   if (!store) {
     return (
-      <div className="bg-white p-6 rounded-lg border border-gray-200">
+      <div className={`${ui.panel} p-6`}>
         <p className="text-sm text-gray-600">Selecione uma loja para configurar.</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className={ui.stack}>
       <div>
         <h2 className="text-xl font-semibold text-gray-900">⚙️ Configurações da Loja</h2>
         <p className="text-sm text-gray-600 mt-1">Gerencie informações e configurações da sua loja</p>
@@ -254,7 +255,7 @@ export default function StoreSettings({ store, onStoreUpdated }: Props) {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Informações Básicas */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <div className={`${ui.panel} p-6`}>
           <h3 className="text-lg font-semibold text-gray-900 mb-4">📝 Informações Básicas</h3>
           <div className="space-y-4">
             <div>
@@ -359,7 +360,7 @@ export default function StoreSettings({ store, onStoreUpdated }: Props) {
         </div>
 
         {/* Endereço */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <div className={`${ui.panel} p-6`}>
           <h3 className="text-lg font-semibold text-gray-900 mb-4">📍 Endereço</h3>
           <div className="grid gap-4 md:grid-cols-2">
             <div className="md:col-span-2">
@@ -419,7 +420,7 @@ export default function StoreSettings({ store, onStoreUpdated }: Props) {
 
         {/* Configurações de Entrega (apenas Alimentação) */}
         {store.category === 'alimentacao' && (
-          <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <div className={`${ui.panel} p-6`}>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">🚚 Configurações de Entrega</h3>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -442,7 +443,7 @@ export default function StoreSettings({ store, onStoreUpdated }: Props) {
         )}
 
         {/* Status da Loja */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <div className={`${ui.panel} p-6`}>
           <h3 className="text-lg font-semibold text-gray-900 mb-4">🔄 Status da Loja</h3>
           <div className="flex items-center gap-3">
             <label className="relative inline-flex items-center cursor-pointer">

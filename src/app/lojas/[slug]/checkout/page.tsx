@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import CheckoutFlow from '@/components/CheckoutFlow'
 import { supabase } from '@/lib/supabaseClient'
+import { getReadableTextColor, getTheme, PORTAL_THEMES, ThemeColor } from '@/lib/themes'
 
 type CartItem = {
   id: string
@@ -15,6 +16,13 @@ type CartItem = {
   notes?: string
 }
 
+function resolveThemeId(themeColor?: string | null): ThemeColor {
+  if (themeColor && themeColor in PORTAL_THEMES) {
+    return themeColor as ThemeColor
+  }
+  return 'azul'
+}
+
 export default function CheckoutPage() {
   const router = useRouter()
   const params = useParams()
@@ -23,8 +31,13 @@ export default function CheckoutPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [cartTotal, setCartTotal] = useState(0)
   const [storeId, setStoreId] = useState<string | null>(null)
+  const [storeThemeColor, setStoreThemeColor] = useState<string>('azul')
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+
+  const themeConfig = getTheme(resolveThemeId(storeThemeColor))
+  const theme = themeConfig.colors
+  const primaryTextColor = getReadableTextColor(theme.primary)
 
   // Carregar dados da loja e carrinho
   useEffect(() => {
@@ -38,7 +51,7 @@ export default function CheckoutPage() {
       try {
         const { data: storeData, error: storeError } = await supabase
           .from('stores')
-          .select('id, slug')
+          .select('id, slug, theme_color')
           .eq('slug', storeSlug)
           .single()
 
@@ -48,6 +61,7 @@ export default function CheckoutPage() {
         }
 
         setStoreId(storeData.id)
+  setStoreThemeColor(storeData.theme_color || 'azul')
 
         const savedCart = localStorage.getItem(`cart_${storeData.id}`)
         if (!savedCart) {
@@ -96,7 +110,7 @@ export default function CheckoutPage() {
     return (
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl p-8 max-w-md text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: `${theme.secondary} transparent transparent transparent` }}></div>
           <p className="text-gray-600">Carregando checkout...</p>
         </div>
       </div>
@@ -111,7 +125,8 @@ export default function CheckoutPage() {
           <p className="text-gray-600 mb-6">Parece que seu carrinho está vazio. Adicione alguns produtos para continuar.</p>
           <button
             onClick={() => router.back()}
-            className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors"
+            className="w-full px-4 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: theme.primary, color: primaryTextColor }}
           >
             Voltar
           </button>

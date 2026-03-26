@@ -17,7 +17,20 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const mustUseVariants = storeCategory === 'varejo';
+  const normalizedStoreCategory = (storeCategory || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  const isFoodStore = normalizedStoreCategory === 'alimentacao' || normalizedStoreCategory === 'food';
+  const isRetailStore = normalizedStoreCategory === 'varejo' || normalizedStoreCategory === 'retail';
+  const mustUseVariants = isRetailStore;
+  const categoryContextLabel = isFoodStore ? 'Alimentação' : isRetailStore ? 'Varejo' : 'Não identificado';
+  const categoryContextBadgeClass = isFoodStore
+    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+    : isRetailStore
+      ? 'bg-blue-50 text-blue-700 border-blue-200'
+      : 'bg-amber-50 text-amber-700 border-amber-200';
 
   // Campos básicos
   const [name, setName] = useState("");
@@ -25,6 +38,14 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [stock, setStock] = useState("");
+  const [criticalStock, setCriticalStock] = useState("");
+  
+  // Rastrear valor inicial de critical_stock para mostrar "Atualmente: X"
+  const initialCriticalStock = initialData?.critical_stock ?? null;
+  const initialStock = initialData?.stock ?? null;
+  const initialPrice = initialData?.price ?? null;
+  const initialName = initialData?.name ?? null;
+  const initialCategory = initialData?.category ?? null;
   
   // Imagens
   const [images, setImages] = useState<string[]>([]);
@@ -40,6 +61,13 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
   // Sistema de variantes
   const [useVariants, setUseVariants] = useState(false);
   const [variants, setVariants] = useState<any[]>([]);
+  const [touched, setTouched] = useState({
+    name: false,
+    price: false,
+    category: false,
+    stock: false,
+    criticalStock: false,
+  });
 
   // Adicionais disponíveis e selecionados
   const [availableAdditionals, setAvailableAdditionals] = useState<any[]>([]);
@@ -55,6 +83,41 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
     max_flavors: number;
     slices: string;
   }>>([]);
+  const [activeStep, setActiveStep] = useState(0);
+  const [hasDraftAvailable, setHasDraftAvailable] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  const draftKey = `product-form-draft:${storeId || 'no-store'}:${productId || 'new'}`;
+
+  const clearDraft = () => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.removeItem(draftKey);
+    setHasDraftAvailable(false);
+  };
+
+  const normalizeKey = (value: string) => value.trim().toLowerCase();
+  const parseDecimal = (value: string) => {
+    const normalized = value.replace(',', '.').trim();
+    const parsed = parseFloat(normalized);
+    return Number.isNaN(parsed) ? null : parsed;
+  };
+
+  const nameInvalid = !name.trim();
+  const categoryInvalid = !category;
+  const priceInvalid = category !== 'Pizza' && (!!price && ((parseDecimal(price) ?? 0) <= 0));
+  const stockInvalid = !useVariants && stock !== '' && ((parseInt(stock, 10) < 0) || Number.isNaN(parseInt(stock, 10)));
+  const criticalStockInvalid = !isRetailStore && criticalStock !== '' && ((parseInt(criticalStock, 10) < 0) || Number.isNaN(parseInt(criticalStock, 10)));
+  const showNameInvalid = touched.name && nameInvalid;
+  const showCategoryInvalid = touched.category && categoryInvalid;
+  const showPriceInvalid = touched.price && priceInvalid;
+  const showStockInvalid = touched.stock && stockInvalid;
+  const showCriticalStockInvalid = touched.criticalStock && criticalStockInvalid;
+  const steps = [
+    { id: 0, label: 'Básico' },
+    { id: 1, label: 'Configurações' },
+    { id: 2, label: 'Conteúdo' },
+    { id: 3, label: 'Revisão' },
+  ];
 
   // Buscar adicionais e categorias da loja
   useEffect(() => {
@@ -126,6 +189,7 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
       setCategory(initialData.category || "");
       setDescription(initialData.description || "");
       setStock(String(initialData.stock || ""));
+      setCriticalStock(initialData.critical_stock === null || initialData.critical_stock === undefined ? "" : String(initialData.critical_stock));
       setUseVariants(mustUseVariants ? true : (initialData.has_variants || false));
       setSizeGroup(initialData.size_group || "roupas");
       
@@ -153,6 +217,7 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
       setCategory("");
       setDescription("");
       setStock("");
+      setCriticalStock("");
       setImages([]);
       setSizes([]);
       setColors([]);
@@ -164,7 +229,76 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
       setPizzaSizes([]);
       setSizeGroup("roupas");
     }
+    setTouched({ name: false, price: false, category: false, stock: false, criticalStock: false });
+    setActiveStep(0);
   }, [initialData, isOpen, mustUseVariants]);
+
+  const goToNextStep = () => {
+    if (activeStep === 0) {
+      setTouched({ name: true, price: true, category: true, stock: true, criticalStock: true });
+      if (nameInvalid || categoryInvalid || priceInvalid || stockInvalid || criticalStockInvalid) return;
+    }
+    setIsTransitioning(true);
+    setActiveStep((prev) => Math.min(steps.length - 1, prev + 1));
+    setTimeout(() => setIsTransitioning(false), 50);
+  };
+
+  const goToPreviousStep = () => {
+    setActiveStep((prev) => Math.max(0, prev - 1));
+  };
+
+  useEffect(() => {
+    if (!isOpen || typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(draftKey);
+      setHasDraftAvailable(Boolean(raw));
+    } catch {
+      setHasDraftAvailable(false);
+    }
+  }, [isOpen, draftKey]);
+
+  useEffect(() => {
+    if (!isOpen || saving || typeof window === 'undefined') return;
+    const timer = window.setTimeout(() => {
+      const draftPayload = {
+        name,
+        price,
+        category,
+        description,
+        stock,
+        criticalStock,
+        images,
+        sizes,
+        colors,
+        sizeGroup,
+        useVariants,
+        variants,
+        selectedAdditionals,
+        pizzaSizes,
+      };
+      window.localStorage.setItem(draftKey, JSON.stringify(draftPayload));
+    }, 450);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    isOpen,
+    saving,
+    draftKey,
+    name,
+    price,
+    category,
+    description,
+    stock,
+    criticalStock,
+    images,
+    sizes,
+    colors,
+    sizeGroup,
+    useVariants,
+    variants,
+    selectedAdditionals,
+    pizzaSizes,
+  ]);
 
   const toggleAdditional = (additionalId: string) => {
     setSelectedAdditionals(prev => 
@@ -240,9 +374,32 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
+  const moveImage = (index: number, direction: -1 | 1) => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= images.length) return;
+    setImages(prev => {
+      const clone = [...prev];
+      const current = clone[index];
+      clone[index] = clone[nextIndex];
+      clone[nextIndex] = current;
+      return clone;
+    });
+  };
+
+  const setAsCover = (index: number) => {
+    if (index <= 0) return;
+    setImages(prev => {
+      const clone = [...prev];
+      const [picked] = clone.splice(index, 1);
+      clone.unshift(picked);
+      return clone;
+    });
+  };
+
   const addSize = () => {
     const trimmed = sizesInput.trim();
-    if (trimmed && !sizes.includes(trimmed)) {
+    const exists = sizes.some((s) => normalizeKey(s) === normalizeKey(trimmed));
+    if (trimmed && !exists) {
       setSizes(prev => [...prev, trimmed]);
       setSizesInput("");
     }
@@ -254,7 +411,8 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
 
   const addColor = () => {
     const trimmed = colorsInput.trim();
-    if (trimmed && !colors.includes(trimmed)) {
+    const exists = colors.some((c) => normalizeKey(c) === normalizeKey(trimmed));
+    if (trimmed && !exists) {
       setColors(prev => [...prev, trimmed]);
       setColorsInput("");
     }
@@ -264,8 +422,46 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
     setColors(prev => prev.filter(c => c !== color));
   };
 
+  const applyDraftData = (draft: any) => {
+    setName(draft.name || "");
+    setPrice(draft.price || "");
+    setCategory(draft.category || "");
+    setDescription(draft.description || "");
+    setStock(draft.stock || "");
+    setCriticalStock(draft.criticalStock || "");
+    setImages(Array.isArray(draft.images) ? draft.images : []);
+    setSizes(Array.isArray(draft.sizes) ? draft.sizes : []);
+    setColors(Array.isArray(draft.colors) ? draft.colors : []);
+    setSizeGroup(draft.sizeGroup || "roupas");
+    setUseVariants(Boolean(draft.useVariants));
+    setVariants(Array.isArray(draft.variants) ? draft.variants : []);
+    setSelectedAdditionals(Array.isArray(draft.selectedAdditionals) ? draft.selectedAdditionals : []);
+    setPizzaSizes(Array.isArray(draft.pizzaSizes) ? draft.pizzaSizes : []);
+    setHasDraftAvailable(false);
+  };
+
+  const restoreDraft = () => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(draftKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      applyDraftData(parsed);
+      setSuccess('Rascunho recuperado com sucesso.');
+      setTimeout(() => setSuccess(''), 2200);
+    } catch {
+      setError('Não foi possível recuperar o rascunho salvo.');
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Blindagem: qualquer submit fora da última etapa deve apenas avançar o fluxo.
+    if (activeStep < steps.length - 1) {
+      goToNextStep();
+      return;
+    }
     
     // Validar nome
     if (!name.trim()) {
@@ -276,6 +472,27 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
     // Validar preço (exceto para Pizza, que usa preço dos tamanhos)
     if (category !== 'Pizza' && !price) {
       setError("Preço é obrigatório");
+      return;
+    }
+
+    if (category !== 'Pizza') {
+      const parsedPrice = parseDecimal(price);
+      if (parsedPrice === null || parsedPrice <= 0) {
+        setError("Informe um preço válido maior que zero");
+        return;
+      }
+    }
+
+    if (!useVariants && stock) {
+      const parsedStock = parseInt(stock, 10);
+      if (Number.isNaN(parsedStock) || parsedStock < 0) {
+        setError("Estoque deve ser um número inteiro maior ou igual a zero");
+        return;
+      }
+    }
+
+    if (criticalStockInvalid) {
+      setError("Estoque crítico deve ser um número inteiro maior ou igual a zero");
       return;
     }
 
@@ -292,10 +509,20 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
 
     // Validar campos dos tamanhos de pizza
     if (category === 'Pizza' && pizzaSizes.length > 0) {
-      const invalidSizes = pizzaSizes.filter(s => !s.size_name.trim() || !s.price || s.max_flavors < 1);
+      const invalidSizes = pizzaSizes.filter(s => !s.size_name.trim() || !s.price || s.max_flavors < 1 || Number(s.price) <= 0);
       if (invalidSizes.length > 0) {
         setError("⚠️ Todos os tamanhos devem ter nome, preço e número de sabores preenchidos!");
         return;
+      }
+
+      const duplicatePizzaSizes = new Set<string>();
+      for (const size of pizzaSizes) {
+        const key = normalizeKey(size.size_name);
+        if (duplicatePizzaSizes.has(key)) {
+          setError("⚠️ Existem tamanhos de pizza duplicados. Use nomes únicos para cada tamanho.");
+          return;
+        }
+        duplicatePizzaSizes.add(key);
       }
     }
 
@@ -311,6 +538,29 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
         setError("Todas as variantes devem ter tamanho, cor e SKU preenchidos");
         return;
       }
+
+      const seenSku = new Set<string>();
+      const seenColorSize = new Set<string>();
+      for (const v of variants) {
+        const skuKey = normalizeKey(String(v.sku || ''));
+        if (seenSku.has(skuKey)) {
+          setError("Há SKUs duplicados nas variantes. Ajuste antes de salvar.");
+          return;
+        }
+        seenSku.add(skuKey);
+
+        const pairKey = `${normalizeKey(String(v.color || ''))}::${normalizeKey(String(v.size || ''))}`;
+        if (seenColorSize.has(pairKey)) {
+          setError("Há combinações de cor+tamanho duplicadas nas variantes.");
+          return;
+        }
+        seenColorSize.add(pairKey);
+      }
+    }
+
+    if (uploadQueue.length > 0) {
+      setError("Você selecionou imagens, mas ainda não concluiu o upload. Clique em 'Fazer upload' antes de salvar.");
+      return;
     }
 
     setSaving(true);
@@ -320,42 +570,64 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
       const payload: any = {
         store_id: storeId,
         name: name.trim(),
-        price: category === 'Pizza' ? 0 : parseFloat(price), // Pizza usa preço dos tamanhos
+        price: category === 'Pizza' ? 0 : (parseDecimal(price) || 0), // Pizza usa preço dos tamanhos
         category: category || null,
         description: description || "",
         images: JSON.stringify(images),
         stock: useVariants ? null : (stock ? parseInt(stock) : null), // estoque global apenas se não usar variantes
+        critical_stock: isRetailStore ? null : (criticalStock ? parseInt(criticalStock, 10) : null),
         has_variants: useVariants,
         size_group: useVariants ? sizeGroup : null, // Define qual grupo de tamanhos usar
         active: true,
       };
 
       // Campos legados (apenas se NÃO usar variantes)
-      if (storeCategory === 'varejo' && !useVariants) {
+      if (isRetailStore && !useVariants) {
         payload.sizes = sizes.length > 0 ? JSON.stringify(sizes) : null;
         payload.colors = colors.length > 0 ? JSON.stringify(colors) : null;
       }
 
       let savedProductId = productId;
+      const payloadWithoutCritical = { ...payload };
+      delete payloadWithoutCritical.critical_stock;
 
       if (productId) {
         // Atualizar produto
-        const { error: updateError } = await supabase
+        const updateAttempt = await supabase
           .from('products')
           .update(payload)
           .eq('id', productId);
-        
-        if (updateError) throw new Error(updateError.message);
+
+        if (updateAttempt.error && /column .*critical_stock|schema cache/i.test(String(updateAttempt.error.message || ''))) {
+          const fallbackUpdate = await supabase
+            .from('products')
+            .update(payloadWithoutCritical)
+            .eq('id', productId);
+          if (fallbackUpdate.error) throw new Error(fallbackUpdate.error.message);
+        } else if (updateAttempt.error) {
+          throw new Error(updateAttempt.error.message);
+        }
       } else {
         // Criar produto
-        const { data: newProduct, error: insertError } = await supabase
+        const insertAttempt = await supabase
           .from('products')
           .insert(payload)
           .select()
           .single();
-        
-        if (insertError) throw new Error(insertError.message);
-        savedProductId = newProduct.id;
+
+        if (insertAttempt.error && /column .*critical_stock|schema cache/i.test(String(insertAttempt.error.message || ''))) {
+          const fallbackInsert = await supabase
+            .from('products')
+            .insert(payloadWithoutCritical)
+            .select()
+            .single();
+          if (fallbackInsert.error) throw new Error(fallbackInsert.error.message);
+          savedProductId = fallbackInsert.data.id;
+        } else if (insertAttempt.error) {
+          throw new Error(insertAttempt.error.message);
+        } else {
+          savedProductId = insertAttempt.data.id;
+        }
       }
 
       // Salvar variantes se ativo
@@ -373,6 +645,7 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
         }
       }
 
+      clearDraft();
       onSave();
       onClose();
     } catch (err) {
@@ -393,14 +666,21 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
       size: v.size,
       color: v.color,
       stock_quantity: v.stock_quantity ?? v.stock ?? 0,
+      critical_stock: Number(v.critical_stock ?? 0) > 0 ? Number(v.critical_stock) : null,
       price_adjustment: v.price_adjustment ?? v.price ?? null,
       images: Array.isArray(v.images) ? v.images : [],
       active: v.active ?? true
     }));
 
     if (variantsToInsert.length > 0) {
-      const { error } = await supabase.from('product_variants').insert(variantsToInsert);
-      if (error) throw new Error(`Erro ao salvar variantes: ${error.message}`);
+      const insertAttempt = await supabase.from('product_variants').insert(variantsToInsert);
+      if (insertAttempt.error && /column .*critical_stock|schema cache/i.test(String(insertAttempt.error.message || ''))) {
+        const fallbackRows = variantsToInsert.map(({ critical_stock, ...rest }) => rest);
+        const fallbackInsert = await supabase.from('product_variants').insert(fallbackRows);
+        if (fallbackInsert.error) throw new Error(`Erro ao salvar variantes: ${fallbackInsert.error.message}`);
+      } else if (insertAttempt.error) {
+        throw new Error(`Erro ao salvar variantes: ${insertAttempt.error.message}`);
+      }
     }
   }
 
@@ -453,61 +733,159 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
           </button>
         </div>
 
-        <form onSubmit={handleSave} className="p-6 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+        <form
+          onSubmit={(e) => {
+            // BLOQUEIO ABSOLUTO: Nenhum submit permitido fora do último step
+            if (activeStep < steps.length - 1 || isTransitioning) {
+              e.preventDefault();
+              if (!isTransitioning) {
+                goToNextStep();
+              }
+              return;
+            }
+            handleSave(e);
+          }}
+          onKeyDown={(e) => {
+            // BLOQUEIO ABSOLUTO: Enter key não avança antes do último step
+            if (e.key === 'Enter' && activeStep < steps.length - 1) {
+              const tag = (e.target as HTMLElement).tagName;
+              if (tag !== 'TEXTAREA') {
+                e.preventDefault();
+                return;
+              }
+            }
+          }}
+          className="p-6 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            {steps.map((step, index) => (
+              <button
+                key={step.id}
+                type="button"
+                onClick={() => {
+                  if (index <= activeStep) {
+                    setActiveStep(index);
+                    return;
+                  }
+                  if (index === activeStep + 1) {
+                    goToNextStep();
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
+                  activeStep === index
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : activeStep > index
+                      ? 'bg-green-50 text-green-700 border-green-200'
+                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                {index + 1}. {step.label}
+              </button>
+            ))}
+          </div>
+          {hasDraftAvailable && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <span>Rascunho local encontrado para este produto.</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={restoreDraft}
+                  className="px-3 py-1.5 rounded bg-amber-600 text-white hover:bg-amber-700"
+                >
+                  Recuperar
+                </button>
+                <button
+                  type="button"
+                  onClick={clearDraft}
+                  className="px-3 py-1.5 rounded bg-gray-200 text-gray-800 hover:bg-gray-300"
+                >
+                  Descartar
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${categoryContextBadgeClass}`}>
+            <span>Conjunto de categorias ativo:</span>
+            <span>{categoryContextLabel}</span>
+          </div>
+
           {error && (
             <div className="bg-red-50 text-red-800 p-3 rounded border border-red-200 text-sm">
               {error}
             </div>
           )}
 
+          {activeStep === 0 && (
+          <>
           {/* Grid ajustável - 1 coluna se Pizza, 2 colunas se não */}
           <div className={category === 'Pizza' ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-2 gap-4'}>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Nome <span className="text-red-500">*</span>
+              <label className="flex items-center justify-between text-sm font-medium text-gray-700 mb-2">
+                <span>Nome <span className="text-red-500">*</span></span>
+                {initialName && (
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded border border-blue-200 max-w-xs truncate">
+                    Atual: {initialName}
+                  </span>
+                )}
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full border rounded px-3 py-2 text-gray-900 focus:ring-2 focus:ring-blue-500"
+                onBlur={() => setTouched(prev => ({ ...prev, name: true }))}
+                className={`w-full border rounded px-3 py-2 text-gray-900 focus:ring-2 focus:ring-blue-500 ${showNameInvalid ? 'border-red-300' : ''}`}
                 placeholder="Nome do produto"
                 required
               />
+              {showNameInvalid && <p className="text-xs text-red-600 mt-1">Nome é obrigatório</p>}
             </div>
 
             {/* Esconder preço se for Pizza (preço vem dos tamanhos) */}
             {category !== 'Pizza' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Valor (R$) <span className="text-red-500">*</span>
+                <label className="flex items-center justify-between text-sm font-medium text-gray-700 mb-2">
+                  <span>Valor (R$) <span className="text-red-500">*</span></span>
+                  {initialPrice !== null && (
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded border border-blue-200">
+                      Atualmente: R$ {Number(initialPrice).toFixed(2).replace('.', ',')}
+                    </span>
+                  )}
                 </label>
                 <input
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  className="w-full border rounded px-3 py-2 text-gray-900 focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => setPrice(e.target.value.replace(',', '.'))}
+                  onBlur={() => setTouched(prev => ({ ...prev, price: true }))}
+                  className={`w-full border rounded px-3 py-2 text-gray-900 focus:ring-2 focus:ring-blue-500 ${showPriceInvalid ? 'border-red-300' : ''}`}
                   placeholder="0.00"
                   required
                 />
+                {showPriceInvalid && <p className="text-xs text-red-600 mt-1">Informe um valor maior que zero</p>}
               </div>
             )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Categoria *
+              <label className="flex items-center justify-between text-sm font-medium text-gray-700 mb-2">
+                <span>Categoria *</span>
+                {initialCategory && (
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded border border-blue-200">
+                    Atual: {initialCategory}
+                  </span>
+                )}
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full border rounded px-3 py-2 text-gray-900 focus:ring-2 focus:ring-blue-500 bg-white"
+                onBlur={() => setTouched(prev => ({ ...prev, category: true }))}
+                className={`w-full border rounded px-3 py-2 text-gray-900 focus:ring-2 focus:ring-blue-500 bg-white ${showCategoryInvalid ? 'border-red-300' : ''}`}
                 required
               >
                 <option value="">Selecione uma categoria</option>
-                {storeCategory === 'alimentacao' ? (
+                {isFoodStore ? (
                   <optgroup label="📌 Categorias Padrão - Alimentação">
                     <option value="Lanches">🍔 Lanches</option>
                     <option value="Pizza">🍕 Pizza</option>
@@ -541,25 +919,61 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
               <p className="text-xs text-gray-500 mt-1">
                 Gerenciar categorias: Painel → Categorias
               </p>
+              {showCategoryInvalid && <p className="text-xs text-red-600 mt-1">Selecione uma categoria</p>}
             </div>
 
             {!useVariants && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Estoque
+                <label className="flex items-center justify-between text-sm font-medium text-gray-700 mb-2">
+                  <span>Estoque</span>
+                  {initialStock !== null && (
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded border border-blue-200">
+                      Atualmente: {initialStock}
+                    </span>
+                  )}
                 </label>
                 <input
                   type="number"
                   value={stock}
                   onChange={(e) => setStock(e.target.value)}
-                  className="w-full border rounded px-3 py-2 text-gray-900 focus:ring-2 focus:ring-blue-500"
+                  onBlur={() => setTouched(prev => ({ ...prev, stock: true }))}
+                  className={`w-full border rounded px-3 py-2 text-gray-900 focus:ring-2 focus:ring-blue-500 ${showStockInvalid ? 'border-red-300' : ''}`}
                   placeholder="Quantidade disponível"
                 />
+                {showStockInvalid && <p className="text-xs text-red-600 mt-1">Estoque inválido. Use número inteiro maior ou igual a 0</p>}
               </div>
             )}
           </div>
 
-          {storeCategory === 'varejo' && (
+          {!isRetailStore && (
+            <div>
+              <label className="flex items-center justify-between text-sm font-medium text-gray-700 mb-2">
+                <span>Alerta de estoque (opcional)</span>
+                {productId && (
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded border border-blue-200">
+                    Atualmente: {initialCriticalStock || '—'}
+                  </span>
+                )}
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={criticalStock}
+                onChange={(e) => setCriticalStock(e.target.value)}
+                onBlur={() => setTouched(prev => ({ ...prev, criticalStock: true }))}
+                className={`w-full border rounded px-3 py-2 text-gray-900 focus:ring-2 focus:ring-blue-500 ${showCriticalStockInvalid ? 'border-red-300' : ''}`}
+                placeholder="Ex: 5"
+              />
+              <p className="text-xs text-gray-500 mt-1">Deixe em branco para não gerar alerta. Se informado, o painel avisa quando o estoque ficar menor ou igual ao valor.</p>
+              {showCriticalStockInvalid && <p className="text-xs text-red-600 mt-1">Use um número inteiro maior ou igual a 0</p>}
+            </div>
+          )}
+          </>
+          )}
+
+          {activeStep === 1 && (
+          <>
+          {isRetailStore && (
             <div className="border-t pt-4 space-y-4">
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
@@ -601,7 +1015,7 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
           )}
 
           {/* Sistema de Variantes */}
-          {storeCategory === 'varejo' && useVariants && (
+          {isRetailStore && useVariants && (
             <ProductVariantsManager
               productId={productId || null}
               basePrice={parseFloat(price) || 0}
@@ -611,7 +1025,7 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
           )}
 
           {/* Campos legados (tamanhos/cores simples) - apenas se NÃO usar variantes */}
-          {storeCategory === 'varejo' && !useVariants && (
+          {isRetailStore && !useVariants && (
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tamanhos</label>
@@ -666,7 +1080,7 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
           )}
 
           {/* Adicionais Específicos do Produto */}
-          {storeCategory === 'alimentacao' && availableAdditionals.length > 0 && (
+          {isFoodStore && availableAdditionals.length > 0 && (
             <div className="border-t pt-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Adicionais Disponíveis para este Produto
@@ -802,7 +1216,11 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
               </div>
             </div>
           )}
+          </>
+          )}
 
+          {activeStep === 2 && (
+          <>
           <div>
             <label className="flex text-sm font-medium text-gray-700 mb-1 items-center justify-between">
               <span>Descrição</span>
@@ -856,11 +1274,44 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
                 </div>
               )}
 
-              <div className="grid grid-cols-5 gap-2 mt-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 mt-3">
                 {images.map((img, idx) => (
                   <div key={idx} className="relative group">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={img} alt={`Imagem ${idx + 1}`} className="w-full h-20 object-cover rounded border" />
+                    {idx === 0 && (
+                      <span className="absolute left-1 top-1 bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded">Capa</span>
+                    )}
+                    <div className="absolute left-1 bottom-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={() => moveImage(idx, -1)}
+                        disabled={idx === 0}
+                        className="w-5 h-5 rounded bg-black/60 text-white text-xs disabled:opacity-40"
+                        title="Mover para esquerda"
+                      >
+                        ←
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveImage(idx, 1)}
+                        disabled={idx === images.length - 1}
+                        className="w-5 h-5 rounded bg-black/60 text-white text-xs disabled:opacity-40"
+                        title="Mover para direita"
+                      >
+                        →
+                      </button>
+                      {idx > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setAsCover(idx)}
+                          className="px-1.5 h-5 rounded bg-blue-600 text-white text-[10px]"
+                          title="Definir como capa"
+                        >
+                          Capa
+                        </button>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={() => removeImage(idx)}
@@ -873,19 +1324,66 @@ export default function ProductFormModal({ isOpen, onClose, onSave, storeId, sto
               </div>
             </div>
           </div>
+          </>
+          )}
 
-          <div className="flex gap-3 pt-4 border-t">
+          {activeStep === 3 && (
+          <>
+          <div className="w-full rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-900">
+            <p className="font-semibold mb-1">Resumo antes de salvar</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <span>Nome: {name || 'não informado'}</span>
+              <span>Categoria: {category || 'não definida'}</span>
+              <span>Imagens: {images.length}</span>
+              <span>Variantes: {useVariants ? variants.length : 0}</span>
+              <span>Estoque: {useVariants ? 'por variante' : (stock || '0')}</span>
+              <span>Crítico: {isRetailStore ? 'por variação' : (criticalStock || 'não definido')}</span>
+              <span>Adicionais: {selectedAdditionals.length}</span>
+              <span>Pizza tamanhos: {category === 'Pizza' ? pizzaSizes.length : 0}</span>
+            </div>
+          </div>
+          </>
+          )}
+
+          <div className="flex items-center justify-between gap-3 pt-4 border-t">
+            <button
+              type="button"
+              onClick={goToPreviousStep}
+              disabled={activeStep === 0}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Anterior
+            </button>
+            <div className="text-xs text-gray-500">Etapa {activeStep + 1} de {steps.length}</div>
+            {activeStep < steps.length - 1 ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  goToNextStep();
+                }}
+                disabled={isTransitioning}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isTransitioning ? 'Carregando...' : 'Próximo'}
+              </button>
+            ) : (
             <button
               type="submit"
-              disabled={saving || uploading}
-              className="flex-1 px-4 py-2 bg-yellow-500 text-black font-semibold rounded hover:bg-yellow-600 disabled:opacity-50"
+              disabled={saving || uploading || nameInvalid || categoryInvalid || priceInvalid || stockInvalid || criticalStockInvalid}
+              className="px-4 py-2 bg-yellow-500 text-black font-semibold rounded hover:bg-yellow-600 disabled:opacity-50"
             >
               {saving ? 'Salvando...' : 'Salvar produto'}
             </button>
+            )}
+          </div>
+
+          <div className="flex gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
+              className="w-full px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
             >
               Cancelar
             </button>
