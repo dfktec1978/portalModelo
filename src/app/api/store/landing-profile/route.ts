@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { supabaseAdmin } from '@/lib/supabaseServer'
+import { getServerPlanDefaults } from '@/lib/storePlansServer'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 type LandingProfileBody = {
   storeId?: string
   storeSlug?: string
+  theme_color?: string
   store_name?: string
   category?: string
   specialty?: string
@@ -22,6 +24,8 @@ type LandingProfileBody = {
   city?: string
   state?: string
 }
+
+const STORE_SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 async function getAuthenticatedUser(request: NextRequest) {
   const authHeader = request.headers.get('authorization') ?? ''
@@ -77,12 +81,28 @@ async function resolveStore(storeRef: string | null, storeSlug: string | null) {
   return null
 }
 
-function normalizePhotoUrls(values?: string[]) {
+function normalizePhotoUrls(values?: string[], maxPhotos = 5) {
   const list = Array.isArray(values) ? values : []
   const normalized = list
     .map((v) => String(v || '').trim())
     .filter(Boolean)
-    .slice(0, 5)
+    .slice(0, maxPhotos)
+  return normalized
+}
+
+function normalizeStoreSlug(value: unknown) {
+  const normalized = String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60)
+
+  if (!normalized) return null
+  if (!STORE_SLUG_REGEX.test(normalized)) return null
   return normalized
 }
 
@@ -98,8 +118,10 @@ function canOwnerEdit(store: any, userId: string) {
 function getLandingPayload(store: any) {
   return {
     storeId: store.id,
-    storeSlug: store.slug || store.id,
+    storeSlug: store.slug || '',
     plan: store.plan || 'presenca',
+    photo_limit: Number.isFinite(Number(store.photo_limit)) ? Number(store.photo_limit) : 5,
+    theme_color: store.theme_color || 'azul',
     store_name: store.store_name || '',
     category: store.category || '',
     specialty: store.specialty || '',
@@ -169,8 +191,42 @@ export async function PUT(request: NextRequest) {
       )
     }
 
+    const planDefaults = await getServerPlanDefaults(store?.plan)
+    const maxPhotos = Math.max(
+      1,
+      Number.isFinite(Number(store?.photo_limit))
+        ? Number(store.photo_limit)
+        : Number(planDefaults?.photo_limit || 5),
+    )
+    const normalizedSlug = normalizeStoreSlug(body.storeSlug)
+
+    if (body.storeSlug && !normalizedSlug) {
+      return NextResponse.json(
+        { error: 'Endereço da loja inválido. Use apenas letras minúsculas, números e hífens.' },
+        { status: 400 },
+      )
+    }
+
+    if (normalizedSlug && normalizedSlug !== store.slug) {
+      const { data: slugConflict } = await supabaseAdmin
+        .from('stores')
+        .select('id')
+        .eq('slug', normalizedSlug)
+        .neq('id', store.id)
+        .maybeSingle()
+
+      if (slugConflict) {
+        return NextResponse.json(
+          { error: 'Este endereço da loja já está em uso. Escolha outro.' },
+          { status: 409 },
+        )
+      }
+    }
+
     const updatePayload: Record<string, unknown> = {
       store_name: body.store_name || null,
+      slug: normalizedSlug || null,
+      theme_color: body.theme_color || null,
       category: body.category || null,
       specialty: body.specialty || null,
       address: body.address || null,
@@ -182,7 +238,7 @@ export async function PUT(request: NextRequest) {
       landing_description: body.landing_description || null,
       description: body.landing_description || null,
       logo_url: body.logo_url || null,
-      landing_photo_urls: normalizePhotoUrls(body.landing_photo_urls),
+      landing_photo_urls: normalizePhotoUrls(body.landing_photo_urls, maxPhotos),
       city: body.city || null,
       state: body.state || null,
     }

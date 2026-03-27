@@ -231,13 +231,31 @@ export default function LojaPublicPage() {
 
     const fetchStoreData = async () => {
       try {
-        // Buscar loja por slug
-        const { data: storeData, error: storeError } = await supabase
+        // Buscar loja por slug e, se nao encontrar, tentar por id (retrocompatibilidade)
+        let storeData: any = null
+        let storeError: any = null
+
+        const bySlug = await supabase
           .from('stores')
           .select('*')
           .eq('slug', slug)
           .in('status', ['active', 'approved'])
-          .single()
+          .maybeSingle()
+
+        storeData = bySlug.data
+        storeError = bySlug.error
+
+        if (!storeData) {
+          const byId = await supabase
+            .from('stores')
+            .select('*')
+            .eq('id', slug)
+            .in('status', ['active', 'approved'])
+            .maybeSingle()
+
+          storeData = byId.data
+          storeError = byId.error
+        }
 
         if (storeError || !storeData) {
           setStore(null)

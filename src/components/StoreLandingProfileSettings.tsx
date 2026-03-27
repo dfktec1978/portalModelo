@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { ordersDashboardTokens as ui } from "@/components/ordersDashboardTokens";
+import { PORTAL_THEMES, ThemeColor } from "@/lib/themes";
 
 type Props = {
   store: any;
@@ -15,6 +16,8 @@ type LandingProfile = {
   storeId: string;
   storeSlug: string;
   plan: string;
+  photo_limit?: number;
+  theme_color: ThemeColor;
   store_name: string;
   category: string;
   specialty: string;
@@ -32,6 +35,7 @@ type LandingProfile = {
 };
 
 const EMPTY_PHOTOS = ["", "", "", "", ""];
+const STORE_SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const PRESET_CATEGORIES = [
   "Restaurante",
   "Lanchonete",
@@ -58,6 +62,17 @@ export default function StoreLandingProfileSettings({ store, adminMode = false }
   const [useCustomCategory, setUseCustomCategory] = useState(false);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
   const photosInputRef = useRef<HTMLInputElement | null>(null);
+
+  const normalizeStoreSlug = (value: string) =>
+    String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9-]+/g, "-")
+      .replace(/-{2,}/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60);
 
   const canEdit = useMemo(() => {
     if (!store) return false;
@@ -98,11 +113,13 @@ export default function StoreLandingProfileSettings({ store, adminMode = false }
         while (photos.length < 5) photos.push("");
 
         if (mounted) {
+          const maxPhotos = String(profile?.plan || "").toLowerCase() === "presenca" ? 1 : 5;
           setForm({
             ...profile,
             city: profile.city || '',
             state: profile.state || '',
-            landing_photo_urls: photos.slice(0, 5),
+            theme_color: (profile as any).theme_color || "azul",
+            landing_photo_urls: photos.slice(0, maxPhotos),
           });
         }
       } catch (error: any) {
@@ -115,16 +132,25 @@ export default function StoreLandingProfileSettings({ store, adminMode = false }
     return () => { mounted = false; };
   }, [store?.id, store?.slug]);
 
+  const maxPhotos = useMemo(() => {
+    const rawLimit = Number(form?.photo_limit);
+    if (Number.isFinite(rawLimit) && rawLimit > 0) {
+      return Math.max(1, Math.floor(rawLimit));
+    }
+    const plan = String(form?.plan || store?.plan || "").toLowerCase();
+    return plan === "presenca" ? 1 : 5;
+  }, [form?.photo_limit, form?.plan, store?.plan]);
+
   const updatePhoto = (index: number, value: string) => {
     if (!form) return;
     const photos = [...(form.landing_photo_urls || EMPTY_PHOTOS)];
     photos[index] = value;
-    setForm({ ...form, landing_photo_urls: photos.slice(0, 5) });
+    setForm({ ...form, landing_photo_urls: photos.slice(0, maxPhotos) });
   };
 
   const activePhotos = useMemo(
-    () => (form?.landing_photo_urls || []).map((photo) => photo.trim()).filter(Boolean).slice(0, 5),
-    [form?.landing_photo_urls],
+    () => (form?.landing_photo_urls || []).map((photo) => photo.trim()).filter(Boolean).slice(0, maxPhotos),
+    [form?.landing_photo_urls, maxPhotos],
   );
 
   const profileCompletion = useMemo(() => {
@@ -149,8 +175,8 @@ export default function StoreLandingProfileSettings({ store, adminMode = false }
   const isRequiredFilled = (value?: string | null) => Boolean(String(value || "").trim());
   const isMissingField = (key: string) => missingFields.includes(key);
   const clearMissingField = (key: string) => setMissingFields((prev) => prev.filter((item) => item !== key));
-  const inputClass = (key: string) => `w-full px-3 py-2 border rounded-lg ${isMissingField(key) ? "border-red-400 bg-red-50" : "border-gray-300"}`;
-  const textareaClass = (key: string) => `w-full px-3 py-2 border rounded-lg h-24 ${isMissingField(key) ? "border-red-400 bg-red-50" : "border-gray-300"}`;
+  const inputClass = (key: string) => `w-full px-3 py-2 border rounded-lg bg-white text-gray-900 placeholder:text-gray-400 ${isMissingField(key) ? "border-red-400 bg-red-50" : "border-gray-300"}`;
+  const textareaClass = (key: string) => `w-full px-3 py-2 border rounded-lg h-24 bg-white text-gray-900 placeholder:text-gray-400 ${isMissingField(key) ? "border-red-400 bg-red-50" : "border-gray-300"}`;
   const fieldLabel = (label: string, isRequired: boolean, filled?: boolean) => (
     <span className="inline-flex items-center gap-2">
       <span>{label}</span>
@@ -225,10 +251,10 @@ export default function StoreLandingProfileSettings({ store, adminMode = false }
   const handlePhotosUpload = async (files: FileList | null) => {
     if (!files || !form) return;
     const currentPhotos = (form.landing_photo_urls || []).map((photo) => photo.trim()).filter(Boolean);
-    const availableSlots = Math.max(0, 5 - currentPhotos.length);
+    const availableSlots = Math.max(0, maxPhotos - currentPhotos.length);
 
     if (availableSlots === 0) {
-      setMessage("Você já atingiu o limite de 5 fotos.");
+      setMessage(`Você já atingiu o limite de ${maxPhotos} foto${maxPhotos > 1 ? "s" : ""}.`);
       if (photosInputRef.current) photosInputRef.current.value = "";
       return;
     }
@@ -244,9 +270,9 @@ export default function StoreLandingProfileSettings({ store, adminMode = false }
         uploadedUrls.push(publicUrl);
       }
 
-      const nextPhotos = [...currentPhotos, ...uploadedUrls].slice(0, 5);
+      const nextPhotos = [...currentPhotos, ...uploadedUrls].slice(0, maxPhotos);
       const padded = [...nextPhotos];
-      while (padded.length < 5) padded.push("");
+      while (padded.length < maxPhotos) padded.push("");
       setForm({ ...form, landing_photo_urls: padded });
       clearMissingField("landing_photo_urls");
       setMessage("Fotos enviadas com sucesso. Salve o perfil para concluir.");
@@ -267,7 +293,7 @@ export default function StoreLandingProfileSettings({ store, adminMode = false }
     if (!form) return;
     const nextPhotos = activePhotos.filter((_, photoIndex) => photoIndex !== index);
     const padded = [...nextPhotos];
-    while (padded.length < 5) padded.push("");
+    while (padded.length < maxPhotos) padded.push("");
     setForm({ ...form, landing_photo_urls: padded });
   };
 
@@ -293,6 +319,7 @@ export default function StoreLandingProfileSettings({ store, adminMode = false }
       { key: "email", label: "E-mail", selector: "#landing-email", valid: isRequiredFilled(form.email) },
       { key: "business_hours", label: "Horário de atendimento", selector: "#landing-business-hours", valid: isRequiredFilled(form.business_hours) },
       { key: "landing_description", label: "Descrição", selector: "#landing-description", valid: isRequiredFilled(form.landing_description) },
+      { key: "storeSlug", label: "Endereço da loja", selector: "#landing-store-slug", valid: isRequiredFilled(form.storeSlug) && STORE_SLUG_REGEX.test(form.storeSlug) },
       { key: "logo_url", label: "Logotipo", selector: "#landing-logo-upload-btn", valid: isRequiredFilled(form.logo_url) },
       { key: "landing_photo_urls", label: "Fotos", selector: "#landing-photos-upload-btn", valid: activePhotos.length > 0 },
     ];
@@ -317,7 +344,8 @@ export default function StoreLandingProfileSettings({ store, adminMode = false }
 
       const payload = {
         ...form,
-        landing_photo_urls: (form.landing_photo_urls || []).map((p) => p.trim()).filter(Boolean).slice(0, 5),
+        storeSlug: normalizeStoreSlug(form.storeSlug || ""),
+        landing_photo_urls: (form.landing_photo_urls || []).map((p) => p.trim()).filter(Boolean).slice(0, maxPhotos),
       };
 
       const res = await fetch("/api/store/landing-profile", {
@@ -390,7 +418,7 @@ export default function StoreLandingProfileSettings({ store, adminMode = false }
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
             <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Fotos enviadas</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">{activePhotos.length} de 5</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900">{activePhotos.length} de {maxPhotos}</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
             <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Perfil preenchido</p>
@@ -500,6 +528,39 @@ export default function StoreLandingProfileSettings({ store, adminMode = false }
               <label className="block text-sm font-medium text-gray-700 mb-1">Instagram</label>
               <input value={form.instagram_url || ""} onChange={(e) => setForm({ ...form, instagram_url: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
             </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {fieldLabel("Endereço da loja", true, isRequiredFilled(form.storeSlug) && STORE_SLUG_REGEX.test(form.storeSlug))}
+              </label>
+              <input
+                id="landing-store-slug"
+                value={form.storeSlug || ""}
+                onChange={(e) => { setForm({ ...form, storeSlug: normalizeStoreSlug(e.target.value) }); clearMissingField("storeSlug"); }}
+                className={inputClass("storeSlug")}
+                placeholder="lojademo"
+              />
+              <p className="mt-1 text-xs text-gray-500">URL: https://www.portalmodelo.tech/lojas/{form.storeSlug || "lojademo"}. Use apenas letras minúsculas, números e hífens.</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-4">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Aparência</h3>
+            <p className="text-xs text-gray-500 mt-1">Escolha o tema visual da loja.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {Object.values(PORTAL_THEMES).map((theme) => (
+              <button
+                key={theme.id}
+                type="button"
+                onClick={() => setForm({ ...form, theme_color: theme.id })}
+                className={`flex flex-col items-center gap-1.5 rounded-lg border-2 px-2 py-2 text-center transition ${form.theme_color === theme.id ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white hover:border-gray-300"}`}
+              >
+                <div className="h-8 w-8 rounded-full ring-1 ring-gray-200" style={{ backgroundColor: theme.preview }} />
+                <span className="text-[10px] font-medium text-gray-700 leading-tight">{theme.name}</span>
+              </button>
+            ))}
           </div>
         </div>
 
@@ -570,8 +631,8 @@ export default function StoreLandingProfileSettings({ store, adminMode = false }
 
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-4">
-              <label className="block text-sm font-medium text-gray-700">{fieldLabel("Até 5 fotos", true, activePhotos.length > 0)}</label>
-              <span className="text-xs text-gray-500">{activePhotos.length}/5</span>
+              <label className="block text-sm font-medium text-gray-700">{fieldLabel(`Até ${maxPhotos} foto${maxPhotos > 1 ? "s" : ""}`, true, activePhotos.length > 0)}</label>
+              <span className="text-xs text-gray-500">{activePhotos.length}/{maxPhotos}</span>
             </div>
             <input
               ref={photosInputRef}
@@ -585,7 +646,7 @@ export default function StoreLandingProfileSettings({ store, adminMode = false }
               id="landing-photos-upload-btn"
               type="button"
               onClick={() => photosInputRef.current?.click()}
-              disabled={uploadingPhotos || activePhotos.length >= 5}
+              disabled={uploadingPhotos || activePhotos.length >= maxPhotos}
               className={`rounded-lg px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-60 ${isMissingField("landing_photo_urls") ? "bg-red-500" : "bg-blue-600"}`}
             >
               {uploadingPhotos ? "Enviando fotos..." : "Adicionar fotos"}

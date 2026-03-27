@@ -169,8 +169,8 @@ export default function AdminVitrinesPage() {
 
       <AddPresencaStoreModal
         isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onSuccess={handleAddStoreSuccess}
+        onCloseAction={() => setShowAddModal(false)}
+        onSuccessAction={handleAddStoreSuccess}
         adminUserId={user?.id || ""}
       />
     </div>

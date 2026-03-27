@@ -2,61 +2,101 @@
 
 import { useEffect, useMemo, useState } from "react";
 import StoreCard from "@/components/StoreCard";
-import { subscribeToAdminStores, type StoreDoc } from "@/lib/adminQueries";
 import externalStores from "@/data/externalStores";
 import { getPlanConfig, normalizeStorePlan } from "@/lib/storePlans";
 import { useStorePlans } from "@/lib/useStorePlans";
 
+const HIDDEN_DEMO_SLUGS = new Set(["food", "lojademo", "landing"]);
+
+/** Exibe label amigável para categorias legacy do DB */
+function displayCategory(raw: string): string {
+  if (!raw) return "";
+  if (raw === "varejo") return "Varejo";
+  if (raw === "alimentacao" || raw === "alimentação") return "Alimentação";
+  return raw; // já é categoria amigável (ex: "Restaurante", "Lanchonete")
+}
+
+/** Compara dois valores de categoria (case/accent insensitive) */
+function categoryMatches(stored: string, filter: string): boolean {
+  if (!filter) return true;
+  const normalize = (s: string) =>
+    s.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return normalize(stored) === normalize(filter);
+}
+
 export default function LojasPage() {
   const { planConfigMap } = useStorePlans();
-  const [stores, setStores] = useState<StoreDoc[]>([]);
+  const [stores, setStores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = subscribeToAdminStores((arr) => {
-      const internals = (arr || []).filter((s) => (s as any).status === 'approved');
+    let active = true;
 
-      // criar mapa por id para facilitar merge com externalStores
-      const map = new Map<string, any>();
-      internals.forEach((s: any) => map.set(String(s.id), { ...s, _internal: true }));
+    const load = async () => {
+      try {
+        const res = await fetch("/api/lojas");
+        const payload = await res.json();
+        if (!active) return;
 
-      // adicionar ou mesclar lojas externas configuradas via código
-      (externalStores || []).forEach((es: any) => {
-        const existing = map.get(es.id);
-        if (existing) {
-          // mesclar: preferir dados internos, mas garantir external_url
-          map.set(es.id, { ...es, ...existing, external_url: existing.external_url || es.external_url });
-        } else {
-          map.set(es.id, { ...es, _externalOnly: true });
-        }
-      });
+        const dbStores: any[] = (payload?.stores || []).map((s: any) => ({
+          ...s,
+          _internal: true,
+        }));
 
-      setStores(Array.from(map.values()));
-      setLoading(false);
-    });
-    return () => { if (typeof unsub === 'function') unsub(); };
+        // Mescla: prioriza dados internos do DB, mantém external_url de externalStores se necessário
+        const map = new Map<string, any>();
+        dbStores.forEach((s) => map.set(String(s.id), s));
+
+        (externalStores || []).forEach((es: any) => {
+          const existing = map.get(String(es.id));
+          if (existing) {
+            map.set(String(es.id), {
+              ...es,
+              ...existing,
+              external_url: existing.external_url || es.external_url,
+            });
+          } else {
+            map.set(String(es.id), { ...es, _externalOnly: true });
+          }
+        });
+
+        setStores(Array.from(map.values()));
+      } catch {
+        // Em caso de erro, mostra pelo menos as externas
+        setStores((externalStores || []).map((es: any) => ({ ...es, _externalOnly: true })));
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    load();
+    const interval = setInterval(load, 10_000);
+    return () => { active = false; clearInterval(interval); };
   }, []);
 
-  // Filtros (UI para uso futuro)
+  // Filtros
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
-  const [location, setLocation] = useState("");
 
+  // Monta lista de categorias a partir dos valores reais armazenados
   const categories = useMemo(() => {
-    const setc = new Set(stores.map((s: any) => (s as any).category).filter(Boolean));
-    return Array.from(setc);
+    const raw = stores.map((s: any) => String((s as any).category || "")).filter(Boolean);
+    const unique = Array.from(new Set(raw)).sort();
+    return unique;
   }, [stores]);
 
   const filtered = useMemo(() => {
     const result = (stores || []).filter((s: any) => {
+      const slug = String((s as any).slug || "").trim().toLowerCase();
+      if (slug && HIDDEN_DEMO_SLUGS.has(slug)) return false;
+
       const q = query.trim().toLowerCase();
       if (q) {
         const inName = ((s as any).storeName || (s as any).store_name || "").toLowerCase().includes(q);
         const inDesc = ((s as any).description || "").toLowerCase().includes(q);
         if (!inName && !inDesc) return false;
       }
-      if (category && (s as any).category !== category) return false;
-      if (location && (s as any).city && !( (s as any).city || "").toLowerCase().includes(location.toLowerCase())) return false;
+      if (category && !categoryMatches(String((s as any).category || ""), category)) return false;
       return true;
     });
 
@@ -69,7 +109,7 @@ export default function LojasPage() {
         : getPlanConfig(normalizeStorePlan(b?.plan), planConfigMap).priorityWeight;
       return bWeight - aWeight;
     });
-  }, [stores, query, category, location, planConfigMap]);
+  }, [stores, query, category, planConfigMap]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -83,7 +123,7 @@ export default function LojasPage() {
 
         {/* Filtros */}
         <section className="bg-white rounded-lg shadow p-4 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.6fr)_minmax(220px,0.8fr)_auto] gap-3 items-end">
             <div>
               <label className="text-sm text-gray-600 block mb-1">Buscar</label>
               <input
@@ -99,25 +139,15 @@ export default function LojasPage() {
               <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full form-select">
                 <option value="">Todas</option>
                 {categories.map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                  <option key={c} value={c}>{displayCategory(c)}</option>
                 ))}
               </select>
-            </div>
-
-            <div>
-              <label className="text-sm text-gray-600 block mb-1">Local</label>
-              <input
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="Cidade, bairro..."
-                className="w-full form-input"
-              />
             </div>
 
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => { setQuery(""); setCategory(""); setLocation(""); }}
+                onClick={() => { setQuery(""); setCategory(""); }}
                 className="px-4 py-2 bg-gray-200 rounded"
               >
                 Limpar
