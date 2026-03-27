@@ -77,7 +77,7 @@ export default function StoreLandingProfileSettings({ store, adminMode = false }
   const canEdit = useMemo(() => {
     if (!store) return false;
     if (adminMode) return true;
-    return String(store?.plan || "") === "landingpage";
+    return ['landingpage', 'destaque', 'premium'].includes(String(store?.plan || "").toLowerCase());
   }, [store, adminMode]);
 
   useEffect(() => {
@@ -113,13 +113,16 @@ export default function StoreLandingProfileSettings({ store, adminMode = false }
         while (photos.length < 5) photos.push("");
 
         if (mounted) {
-          const maxPhotos = String(profile?.plan || "").toLowerCase() === "presenca" ? 1 : 5;
+          const resolvedLimit = Number.isFinite(Number(profile?.photo_limit)) && Number(profile.photo_limit) > 0
+            ? Number(profile.photo_limit)
+            : String(profile?.plan || "").toLowerCase() === "presenca" ? 1 : 5;
           setForm({
             ...profile,
+            photo_limit: resolvedLimit,
             city: profile.city || '',
             state: profile.state || '',
             theme_color: (profile as any).theme_color || "azul",
-            landing_photo_urls: photos.slice(0, maxPhotos),
+            landing_photo_urls: photos.slice(0, resolvedLimit),
           });
         }
       } catch (error: any) {

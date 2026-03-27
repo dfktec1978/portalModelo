@@ -159,7 +159,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
     }
 
-    return NextResponse.json({ profile: getLandingPayload(store) })
+    const planDefaults = await getServerPlanDefaults(store?.plan)
+    const resolvedPhotoLimit = Number.isFinite(Number(store?.photo_limit)) && Number(store.photo_limit) > 0
+      ? Number(store.photo_limit)
+      : Number(planDefaults?.photo_limit || 5)
+
+    return NextResponse.json({ profile: getLandingPayload({ ...store, photo_limit: resolvedPhotoLimit }) })
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || 'Erro interno' }, { status: 500 })
   }
@@ -194,7 +199,7 @@ export async function PUT(request: NextRequest) {
     const planDefaults = await getServerPlanDefaults(store?.plan)
     const maxPhotos = Math.max(
       1,
-      Number.isFinite(Number(store?.photo_limit))
+      Number.isFinite(Number(store?.photo_limit)) && Number(store?.photo_limit) > 0
         ? Number(store.photo_limit)
         : Number(planDefaults?.photo_limit || 5),
     )
