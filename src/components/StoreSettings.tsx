@@ -294,7 +294,7 @@ export default function StoreSettings({ store, onStoreUpdated }: Props) {
               <div className="mt-2 rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-900">
                 <div className="font-semibold">{selectedPlanConfig.name} • {selectedPlanConfig.priceLabel}</div>
                 <div className="mt-1">Produtos permitidos: {selectedPlanDefaults.product_limit}</div>
-                <div>Fotos por produto: {selectedPlanDefaults.photo_limit}</div>
+                <div>Limite de fotos: {selectedPlanDefaults.photo_limit}</div>
                 <div>Prioridade na vitrine: {selectedPlanDefaults.priority_weight}</div>
                 {planTransition.type !== 'none' && (
                   <div className="mt-2 font-medium">

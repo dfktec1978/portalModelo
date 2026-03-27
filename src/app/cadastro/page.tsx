@@ -437,7 +437,7 @@ export default function CadastroPage() {
                       ))}
                     </select>
                     <p className="text-xs text-gray-400 mt-1">
-                      Limites do plano: {getPlanDefaults(selectedPlan, planConfigMap).product_limit} produtos e {getPlanDefaults(selectedPlan, planConfigMap).photo_limit} fotos por produto.
+                      Limites do plano: {getPlanDefaults(selectedPlan, planConfigMap).product_limit} produtos e {getPlanDefaults(selectedPlan, planConfigMap).photo_limit} fotos.
                     </p>
                   </div>
                 </>

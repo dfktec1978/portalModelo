@@ -91,7 +91,7 @@ export default function AdminPlanosPage() {
                 <input type="number" min={0} value={plan.productLimit} onChange={(e) => updatePlan(plan.id, 'productLimit', e.target.value)} className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-white" />
               </div>
               <div>
-                <label className="block text-sm text-gray-300 mb-1">Fotos por produto</label>
+                <label className="block text-sm text-gray-300 mb-1">Limite de fotos</label>
                 <input type="number" min={0} value={plan.photoLimit} onChange={(e) => updatePlan(plan.id, 'photoLimit', e.target.value)} className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-white" />
               </div>
               <div>

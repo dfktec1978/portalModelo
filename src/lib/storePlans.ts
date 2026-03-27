@@ -28,7 +28,7 @@ export const PLAN_CONFIG: PlanConfigMap = {
     name: 'Plano Presença',
     priceLabel: 'Grátis',
     productLimit: 0,
-    photoLimit: 10,
+    photoLimit: 1,
     priorityWeight: 1,
   },
   landingpage: {
@@ -154,7 +154,7 @@ export function resolveStoreLimits(store: any) {
     product_limit: Number.isFinite(Number(store?.product_limit))
       ? Number(store.product_limit)
       : cfg.productLimit,
-    photo_limit: Number.isFinite(Number(store?.photo_limit))
+    photo_limit: Number.isFinite(Number(store?.photo_limit)) && Number(store?.photo_limit) > 0
       ? Number(store.photo_limit)
       : cfg.photoLimit,
     priority_weight: Number.isFinite(Number(store?.priority_weight))

@@ -245,7 +245,7 @@ export default function CadastroLogistaPage() {
                 ))}
               </select>
               <p className="text-xs text-white/70 mt-1">
-                Limites: até {getPlanDefaults(selectedPlan, planConfigMap).product_limit} produtos, {getPlanDefaults(selectedPlan, planConfigMap).photo_limit} fotos por produto.
+                Limites: até {getPlanDefaults(selectedPlan, planConfigMap).product_limit} produtos, {getPlanDefaults(selectedPlan, planConfigMap).photo_limit} fotos.
               </p>
             </div>
 

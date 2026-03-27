@@ -258,7 +258,7 @@ export async function PATCH(request: NextRequest) {
     const planDefaults = await getServerPlanDefaults((storeRow as any).plan);
     const maxPhotos = Math.max(
       1,
-      Number.isFinite(Number((storeRow as any).photo_limit))
+      Number.isFinite(Number((storeRow as any).photo_limit)) && Number((storeRow as any).photo_limit) > 0
         ? Number((storeRow as any).photo_limit)
         : Number(planDefaults?.photo_limit || 5)
     );
