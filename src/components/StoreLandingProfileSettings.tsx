@@ -389,7 +389,7 @@ export default function StoreLandingProfileSettings({ store, adminMode = false }
   }
 
   return (
-    <div className={ui.stack}>
+    <div className={`${ui.stack} text-gray-900`}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">🌐 Perfil da Landing Page</h2>
