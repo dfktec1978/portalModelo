@@ -123,8 +123,8 @@ export default function AdminIndex() {
           href="/admin/vitrines"
           className="bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg p-6 transition"
         >
-          <h3 className="font-bold text-lg mb-2 text-white">🧩 Vitrines Grátis/Landing</h3>
-          <p className="text-gray-300 text-sm">Gerencie campos institucionais dos planos Grátis e LandingPage</p>
+          <h3 className="font-bold text-lg mb-2 text-white">🧩 Vitrines Presença</h3>
+          <p className="text-gray-300 text-sm">Gerencie vitrines do plano Presença (administração do portal)</p>
         </Link>
 
         <Link

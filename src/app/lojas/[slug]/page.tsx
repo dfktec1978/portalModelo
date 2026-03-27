@@ -627,6 +627,7 @@ export default function LojaPublicPage() {
   }
 
   const isShowcasePlan = ['presenca', 'landingpage'].includes(String(store?.plan || '').toLowerCase())
+  const isPresencePlan = String(store?.plan || '').toLowerCase() === 'presenca'
   const showcaseDescription = store?.landing_description || store?.description || ''
   const showcasePhotos = Array.isArray(store?.landing_photo_urls)
     ? store.landing_photo_urls.filter(Boolean).slice(0, 5)
@@ -639,7 +640,7 @@ export default function LojaPublicPage() {
     : null
   const instagramUrl = makeExternalUrl(store?.instagram_url, 'https://instagram.com/')
   const facebookUrl = makeExternalUrl(store?.facebook_url, 'https://facebook.com/')
-  const shouldRenderCatalog = products.length > 0
+  const shouldRenderCatalog = products.length > 0 && !isPresencePlan
 
   useEffect(() => {
     if (showcasePhotos.length === 0) {

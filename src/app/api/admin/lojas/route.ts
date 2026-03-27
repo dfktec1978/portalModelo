@@ -103,3 +103,71 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export async function POST(request: NextRequest) {
+  try {
+    const userId = request.nextUrl.searchParams.get('userId');
+
+    if (!userId) {
+      return NextResponse.json({ error: 'userId é obrigatório' }, { status: 400 });
+    }
+
+    const { data: requester, error: requesterError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, role')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (requesterError) {
+      return NextResponse.json({ error: requesterError.message }, { status: 500 });
+    }
+
+    if (!requester || requester.role !== 'admin') {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { store_name, phone, address, city, state, description } = body;
+
+    if (!store_name) {
+      return NextResponse.json({ error: 'store_name é obrigatório' }, { status: 400 });
+    }
+
+    // Obter defaults do plano Presença
+    const defaults = getPlanDefaults('presenca');
+
+    const newStoreData = {
+      store_name: String(store_name).trim(),
+      phone: phone ? String(phone).trim() : '',
+      address: address ? String(address).trim() : '',
+      city: city ? String(city).trim() : '',
+      state: state ? String(state).trim() : '',
+      description: description ? String(description).trim() : '',
+      plan: 'presenca',
+      status: 'active',
+      plan_status: defaults.plan_status,
+      product_limit: defaults.product_limit,
+      photo_limit: defaults.photo_limit,
+      priority_weight: defaults.priority_weight,
+    };
+
+    const { data: newStore, error: insertError } = await supabaseAdmin
+      .from('stores')
+      .insert([newStoreData])
+      .select()
+      .single();
+
+    if (insertError) {
+      return NextResponse.json({ error: insertError.message || 'Erro ao criar loja' }, { status: 500 });
+    }
+
+    const normalized = normalizeStore(newStore);
+
+    return NextResponse.json({ store: normalized, success: true }, { status: 201 });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error?.message || 'Erro interno ao criar loja' },
+      { status: 500 }
+    );
+  }
+}
