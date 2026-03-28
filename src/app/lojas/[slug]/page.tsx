@@ -15,6 +15,7 @@ type Store = {
   slug: string
   category: string | null
   plan: string | null
+  photo_limit: number | null
   theme_color: string
   logo_url: string | null
   description: string | null
