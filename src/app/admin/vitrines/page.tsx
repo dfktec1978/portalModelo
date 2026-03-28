@@ -17,6 +17,12 @@ type AdminStore = {
   status?: string;
 };
 
+function isVisiblePresencaStore(store: AdminStore) {
+  const plan = String(store.plan || 'presenca');
+  const status = String(store.status || 'approved');
+  return plan === 'presenca' && (status === 'approved' || status === 'active');
+}
+
 export default function AdminVitrinesPage() {
   const { user, loading } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
@@ -25,6 +31,8 @@ export default function AdminVitrinesPage() {
   const [storesLoading, setStoresLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [actionMessage, setActionMessage] = useState("");
 
   useEffect(() => {
     if (!user || profile?.role !== "admin") return;
@@ -42,7 +50,7 @@ export default function AdminVitrinesPage() {
         if (!res.ok) throw new Error(payload?.error || "Erro ao carregar lojas");
 
         const all = (payload?.stores || []) as AdminStore[];
-        const showcase = all.filter((s) => String(s.plan || "presenca") === "presenca");
+        const showcase = all.filter(isVisiblePresencaStore);
 
         if (!mounted) return;
         setStores(showcase);
@@ -72,10 +80,12 @@ export default function AdminVitrinesPage() {
       if (!res.ok) throw new Error(payload?.error || "Erro ao carregar lojas");
 
       const all = (payload?.stores || []) as AdminStore[];
-      const showcase = all.filter((s) => String(s.plan || "presenca") === "presenca");
+      const showcase = all.filter(isVisiblePresencaStore);
 
       setStores(showcase);
-      if (showcase.length > 0 && !selectedId) {
+      if (showcase.length === 0) {
+        setSelectedId("");
+      } else if (!showcase.some((item) => String(item.id) === String(selectedId))) {
         setSelectedId(String(showcase[0].id));
       }
     } catch (e: any) {
@@ -88,6 +98,36 @@ export default function AdminVitrinesPage() {
   const handleAddStoreSuccess = (newStore: any) => {
     setShowAddModal(false);
     reloadStores();
+  };
+
+  const handleDeleteLanding = async () => {
+    if (!selectedStore || !user?.id || deleting) return;
+
+    const storeName = selectedStore.store_name || selectedStore.storeName || 'esta loja';
+    const confirmed = window.confirm(`Tem certeza que deseja excluir a landing page de ${storeName}? Ela será removida da vitrine pública.`);
+    if (!confirmed) return;
+
+    setDeleting(true);
+    setError("");
+    setActionMessage("");
+
+    try {
+      const response = await fetch(`/api/admin/lojas?userId=${encodeURIComponent(user.id)}&storeId=${encodeURIComponent(selectedStore.id)}`, {
+        method: 'DELETE',
+      });
+
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Erro ao excluir landing page');
+      }
+
+      setActionMessage(payload?.message || 'Landing page excluída com sucesso.');
+      await reloadStores();
+    } catch (e: any) {
+      setError(e?.message || 'Erro ao excluir landing page');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const selectedStore = useMemo(
@@ -113,6 +153,12 @@ export default function AdminVitrinesPage() {
       {error && (
         <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-900">
           {error}
+        </div>
+      )}
+
+      {actionMessage && (
+        <div className="rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800">
+          {actionMessage}
         </div>
       )}
 
@@ -158,7 +204,12 @@ export default function AdminVitrinesPage() {
 
         <section className="lg:col-span-2">
           {selectedStore ? (
-            <StoreLandingProfileSettings store={selectedStore} adminMode />
+            <StoreLandingProfileSettings
+              store={selectedStore}
+              adminMode
+              onDeleteLandingAction={handleDeleteLanding}
+              deletingLanding={deleting}
+            />
           ) : (
             <div className="bg-white rounded-lg border border-gray-200 p-6 text-sm text-gray-600">
               Selecione uma loja para editar os campos da vitrine.

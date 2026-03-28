@@ -433,3 +433,66 @@ export async function PATCH(request: NextRequest) {
     );
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const userId = request.nextUrl.searchParams.get('userId');
+    const storeId = request.nextUrl.searchParams.get('storeId');
+
+    if (!userId) {
+      return NextResponse.json({ error: 'userId é obrigatório' }, { status: 400 });
+    }
+
+    if (!storeId) {
+      return NextResponse.json({ error: 'storeId é obrigatório' }, { status: 400 });
+    }
+
+    const { data: requester, error: requesterError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, role')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (requesterError) {
+      return NextResponse.json({ error: requesterError.message }, { status: 500 });
+    }
+
+    if (!requester || requester.role !== 'admin') {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
+
+    const { data: store, error: storeError } = await supabaseAdmin
+      .from('stores')
+      .select('id, plan, status, store_name')
+      .eq('id', storeId)
+      .maybeSingle();
+
+    if (storeError) {
+      return NextResponse.json({ error: storeError.message || 'Erro ao buscar loja' }, { status: 500 });
+    }
+
+    if (!store) {
+      return NextResponse.json({ error: 'Loja não encontrada' }, { status: 404 });
+    }
+
+    const { error: updateError } = await supabaseAdmin
+      .from('stores')
+      .update({ status: 'inactive' })
+      .eq('id', storeId);
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message || 'Erro ao excluir landing page' }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      storeId,
+      message: `Landing page de ${String((store as any).store_name || 'loja')} removida da vitrine.`,
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error?.message || 'Erro interno ao excluir landing page' },
+      { status: 500 }
+    );
+  }
+}

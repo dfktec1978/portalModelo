@@ -10,6 +10,8 @@ import { PORTAL_THEMES, ThemeColor } from "@/lib/themes";
 type Props = {
   store: any;
   adminMode?: boolean;
+  onDeleteLandingAction?: () => void | Promise<void>;
+  deletingLanding?: boolean;
 };
 
 type LandingProfile = {
@@ -51,7 +53,12 @@ const PRESET_CATEGORIES = [
   "Casa e Decoração",
 ];
 
-export default function StoreLandingProfileSettings({ store, adminMode = false }: Props) {
+export default function StoreLandingProfileSettings({
+  store,
+  adminMode = false,
+  onDeleteLandingAction,
+  deletingLanding = false,
+}: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -395,16 +402,30 @@ export default function StoreLandingProfileSettings({ store, adminMode = false }
     <div className={`${ui.stack} text-gray-900`}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">🌐 Perfil da Landing Page</h2>
-          <p className="text-sm text-gray-600 mt-1">Organize as informações da sua loja para uma apresentação mais clara e profissional.</p>
+          <h2 className={`text-xl font-semibold ${adminMode ? 'text-white' : 'text-gray-900'}`}>🌐 Perfil da Landing Page</h2>
+          <p className={`text-sm mt-1 ${adminMode ? 'text-blue-100' : 'text-gray-600'}`}>
+            Organize as informações da sua loja para uma apresentação mais clara e profissional.
+          </p>
         </div>
-        <button
-          onClick={save}
-          disabled={saving}
-          className="rounded-lg bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 text-sm font-semibold disabled:opacity-60"
-        >
-          {saving ? "Salvando..." : "Salvar perfil"}
-        </button>
+        <div className="flex items-center gap-2">
+          {adminMode && onDeleteLandingAction && (
+            <button
+              type="button"
+              onClick={onDeleteLandingAction}
+              disabled={deletingLanding}
+              className="rounded-lg bg-red-600 hover:bg-red-700 text-white px-4 py-2 text-sm font-semibold disabled:opacity-60"
+            >
+              {deletingLanding ? 'Excluindo...' : 'Excluir landing'}
+            </button>
+          )}
+          <button
+            onClick={save}
+            disabled={saving}
+            className="rounded-lg bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 text-sm font-semibold disabled:opacity-60"
+          >
+            {saving ? "Salvando..." : "Salvar perfil"}
+          </button>
+        </div>
       </div>
 
       {message && (
