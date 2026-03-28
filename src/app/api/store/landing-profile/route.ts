@@ -203,6 +203,8 @@ export async function PUT(request: NextRequest) {
         ? Number(store.photo_limit)
         : Number(planDefaults?.photo_limit || 5),
     )
+    const normalizedPhotos = normalizePhotoUrls(body.landing_photo_urls, maxPhotos)
+    const enforcedPhotoLimit = Math.max(1, maxPhotos, normalizedPhotos.length)
     const normalizedSlug = normalizeStoreSlug(body.storeSlug)
 
     if (body.storeSlug && !normalizedSlug) {
@@ -243,7 +245,9 @@ export async function PUT(request: NextRequest) {
       landing_description: body.landing_description || null,
       description: body.landing_description || null,
       logo_url: body.logo_url || null,
-      landing_photo_urls: normalizePhotoUrls(body.landing_photo_urls, maxPhotos),
+      // Mantem compatibilidade com constraints legados que validam qtd de fotos contra photo_limit.
+      photo_limit: enforcedPhotoLimit,
+      landing_photo_urls: normalizedPhotos,
       city: body.city || null,
       state: body.state || null,
     }

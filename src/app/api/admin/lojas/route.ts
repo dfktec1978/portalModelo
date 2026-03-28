@@ -192,6 +192,7 @@ export async function POST(request: NextRequest) {
 
     // Obter defaults do plano Presença
     const defaults = getPlanDefaults('presenca');
+    const safePhotoLimit = Math.max(1, Number(defaults.photo_limit || 0));
     const slug = await buildUniqueStoreSlug(body.slug, store_name);
 
     const newStoreData = {
@@ -211,8 +212,10 @@ export async function POST(request: NextRequest) {
       status: 'approved',
       plan_status: defaults.plan_status,
       product_limit: defaults.product_limit,
-      photo_limit: defaults.photo_limit,
+      photo_limit: safePhotoLimit,
       priority_weight: defaults.priority_weight,
+      // Alguns bancos legados validam explicitamente o tipo/limite de landing_photo_urls.
+      landing_photo_urls: [],
     };
 
     const { data: newStore, error: insertError } = await supabaseAdmin
