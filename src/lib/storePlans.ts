@@ -28,7 +28,7 @@ export const PLAN_CONFIG: PlanConfigMap = {
     name: 'Plano Presença',
     priceLabel: 'Grátis',
     productLimit: 0,
-    photoLimit: 1,
+    photoLimit: 5,
     priorityWeight: 0,
   },
   landingpage: {

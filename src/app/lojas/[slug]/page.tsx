@@ -717,10 +717,18 @@ export default function LojaPublicPage() {
   const isShowcasePlan = ['presenca', 'landingpage'].includes(String(store?.plan || '').toLowerCase())
   const isPresencePlan = String(store?.plan || '').toLowerCase() === 'presenca'
   const showcaseDescription = store?.landing_description || store?.description || ''
+  const showcasePhotoLimit = Number.isFinite(Number(store?.photo_limit)) && Number(store?.photo_limit) > 0
+    ? Math.max(1, Math.floor(Number(store.photo_limit)))
+    : String(store?.plan || '').toLowerCase() === 'landingpage'
+      ? 10
+      : 5
   const showcasePhotos = Array.isArray(store?.landing_photo_urls)
-    ? store.landing_photo_urls.filter(Boolean).slice(0, 5)
+    ? store.landing_photo_urls.filter(Boolean).slice(0, showcasePhotoLimit)
     : []
-  const showcasePhotoSlots = Array.from({ length: 5 }, (_, index) => showcasePhotos[index] || null)
+  const showcasePhotoSlots = Array.from(
+    { length: Math.max(1, Math.min(showcasePhotoLimit, Math.max(showcasePhotos.length, 1))) },
+    (_, index) => showcasePhotos[index] || null,
+  )
   const currentShowcasePhoto = showcasePhotos[activeShowcasePhotoIndex] || showcasePhotos[0] || null
   const hasMultipleShowcasePhotos = showcasePhotos.length > 1
   const whatsappUrl = store?.phone

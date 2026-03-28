@@ -117,12 +117,12 @@ export default function StoreLandingProfileSettings({
 
         const profile = payload?.profile as LandingProfile;
         const photos = Array.isArray(profile?.landing_photo_urls) ? [...profile.landing_photo_urls] : [];
-        while (photos.length < 5) photos.push("");
 
         if (mounted) {
           const resolvedLimit = Number.isFinite(Number(profile?.photo_limit)) && Number(profile.photo_limit) > 0
             ? Number(profile.photo_limit)
-            : String(profile?.plan || "").toLowerCase() === "presenca" ? 1 : 5;
+            : String(profile?.plan || "").toLowerCase() === "landingpage" ? 10 : 5;
+          while (photos.length < resolvedLimit) photos.push("");
           setForm({
             ...profile,
             photo_limit: resolvedLimit,
@@ -148,7 +148,7 @@ export default function StoreLandingProfileSettings({
       return Math.max(1, Math.floor(rawLimit));
     }
     const plan = String(form?.plan || store?.plan || "").toLowerCase();
-    return plan === "presenca" ? 1 : 5;
+    return plan === "landingpage" ? 10 : 5;
   }, [form?.photo_limit, form?.plan, store?.plan]);
 
   const updatePhoto = (index: number, value: string) => {
@@ -369,6 +369,21 @@ export default function StoreLandingProfileSettings({
 
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Erro ao salvar perfil da landing");
+
+      const savedProfile = json?.profile as LandingProfile | undefined;
+      if (savedProfile) {
+        const savedPhotos = Array.isArray(savedProfile.landing_photo_urls) ? [...savedProfile.landing_photo_urls] : [];
+        const resolvedLimit = Number.isFinite(Number(savedProfile.photo_limit)) && Number(savedProfile.photo_limit) > 0
+          ? Number(savedProfile.photo_limit)
+          : maxPhotos;
+        while (savedPhotos.length < resolvedLimit) savedPhotos.push("");
+
+        setForm({
+          ...savedProfile,
+          photo_limit: resolvedLimit,
+          landing_photo_urls: savedPhotos.slice(0, resolvedLimit),
+        });
+      }
 
       setMessage("Perfil salvo com sucesso.");
     } catch (error: any) {
