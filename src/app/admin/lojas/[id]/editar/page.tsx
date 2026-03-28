@@ -79,7 +79,7 @@ export default function EditStorePage() {
           plan_status: store.plan_status,
           product_limit: Number(store.product_limit ?? 0),
           photo_limit: Number(store.photo_limit ?? 0),
-          priority_weight: Number(store.priority_weight ?? 1),
+          priority_weight: Number(store.priority_weight ?? 0),
         } as any);
         alert('Loja criada no banco e atualizada');
       } else {
@@ -92,7 +92,7 @@ export default function EditStorePage() {
           plan_status: store.plan_status,
           product_limit: Number(store.product_limit ?? 0),
           photo_limit: Number(store.photo_limit ?? 0),
-          priority_weight: Number(store.priority_weight ?? 1),
+          priority_weight: Number(store.priority_weight ?? 0),
         } as any);
         alert('Loja atualizada');
       }
@@ -197,7 +197,7 @@ export default function EditStorePage() {
             <input
               type="number"
               min={0}
-              value={store.priority_weight ?? 1}
+              value={store.priority_weight ?? 0}
               onChange={(e) => setStore({ ...store, priority_weight: Number(e.target.value || 0) })}
               className="form-input"
             />

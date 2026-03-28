@@ -13,9 +13,10 @@ import StoreSettings from "@/components/StoreSettings";
 import StoreLandingProfileSettings from "@/components/StoreLandingProfileSettings";
 
 import StorePaymentSettings from "@/components/StorePaymentSettings";
+import StoreReviewsModule from "@/components/StoreReviewsModule";
 export default function LojaDashboardPage() {
   const { user } = useAuth();
-  const [view, setView] = useState<'overview'|'orders'|'finance'|'appearance'|'settings'|'payments'|'products'|'menu'|'profile'|'schedule'|'stock'|'additionals'|'categories'|'pizza-flavors'|'variants'|'landing-profile'>('overview');
+  const [view, setView] = useState<'overview'|'orders'|'finance'|'appearance'|'settings'|'payments'|'products'|'menu'|'profile'|'schedule'|'stock'|'additionals'|'categories'|'pizza-flavors'|'variants'|'landing-profile'|'reviews'>('overview');
   const [category, setCategory] = useState<'varejo'|'alimentacao'>('varejo');
   const [selectedStoreSlug, setSelectedStoreSlug] = useState<string | null>(null);
   const [selectedStore, setSelectedStore] = useState<any>(null);
@@ -89,7 +90,7 @@ export default function LojaDashboardPage() {
           {view === 'settings' && (
             <StoreSettings
               store={selectedStore}
-              onStoreUpdated={(updatedStore) => {
+                onStoreUpdatedAction={(updatedStore) => {
                 setSelectedStore(updatedStore);
                 if (updatedStore?.category === 'varejo' || updatedStore?.category === 'alimentacao') {
                   setCategory(updatedStore.category);
@@ -108,6 +109,7 @@ export default function LojaDashboardPage() {
 
           {view === 'payments' && <StorePaymentSettings store={selectedStore} />}
           {view === 'landing-profile' && ['landingpage', 'destaque', 'premium'].includes(String(selectedStore?.plan || '').toLowerCase()) && <StoreLandingProfileSettings store={selectedStore} />}
+                  {view === 'reviews' && <StoreReviewsModule store={selectedStore} />}
         </main>
       </div>
     </div>

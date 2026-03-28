@@ -141,6 +141,18 @@ function IconChevronRight() {
   )
 }
 
+function IconShare() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
+      <circle cx="18" cy="5" r="2.5" />
+      <circle cx="6" cy="12" r="2.5" />
+      <circle cx="18" cy="19" r="2.5" />
+      <path d="m8.2 11 7.5-4.2" />
+      <path d="m8.2 13 7.5 4.2" />
+    </svg>
+  )
+}
+
 function normalizeDeliveryOptions(raw: any): { retirada: boolean; envio: boolean; condicional: boolean } {
   if (Array.isArray(raw)) return { retirada: raw.includes('retirada'), envio: raw.includes('envio'), condicional: raw.includes('condicional') }
   if (raw && typeof raw === 'object') return { retirada: !!raw.retirada, envio: !!raw.envio, condicional: !!raw.condicional }
@@ -168,6 +180,8 @@ export default function LojaPublicPage() {
   const [showProductModal, setShowProductModal] = useState(false)
   const [showPizzaModal, setShowPizzaModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [shareProduct, setShareProduct] = useState<Product | null>(null)
+  const [shareFeedback, setShareFeedback] = useState('')
   
   // Estados do modal de produto
   const [additionals, setAdditionals] = useState<Additional[]>([])
@@ -642,6 +656,62 @@ export default function LojaPublicPage() {
     if (/^https?:\/\//i.test(raw)) return raw
     if (!prefix) return raw
     return `${prefix}${raw.replace(/^@/, '')}`
+  }
+
+  const isSharePlan = ['destaque', 'premium'].includes(String(store?.plan || '').toLowerCase())
+  const supportsNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
+
+  const buildProductLink = (product: Product) => {
+    if (typeof window === 'undefined') return ''
+    const storeSlug = store?.slug || slug
+    return `${window.location.origin}/lojas/${storeSlug}/produto/${product.id}`
+  }
+
+  const shareViaWhatsApp = (product: Product) => {
+    const link = buildProductLink(product)
+    if (!link) return
+    const text = `Confira ${product.name} da loja ${store?.store_name || ''}\n\n${link}`
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
+    setShareProduct(null)
+  }
+
+  const shareNatively = async (product: Product) => {
+    const link = buildProductLink(product)
+    if (!link || !supportsNativeShare) return
+
+    try {
+      await navigator.share({
+        title: product.name,
+        text: `Confira ${product.name} da loja ${store?.store_name || ''}`,
+        url: link,
+      })
+      setShareProduct(null)
+    } catch (error: any) {
+      if (error?.name !== 'AbortError') {
+        setShareFeedback('Não foi possível abrir o compartilhamento nativo.')
+        setTimeout(() => setShareFeedback(''), 2400)
+      }
+    }
+  }
+
+  const shareViaFacebook = (product: Product) => {
+    const link = buildProductLink(product)
+    if (!link) return
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`, '_blank', 'noopener,noreferrer')
+    setShareProduct(null)
+  }
+
+  const copyShareLink = async (product: Product) => {
+    const link = buildProductLink(product)
+    if (!link) return
+    try {
+      await navigator.clipboard.writeText(link)
+      setShareFeedback('Link do produto copiado!')
+    } catch {
+      setShareFeedback('Não foi possível copiar o link.')
+    }
+    setShareProduct(null)
+    setTimeout(() => setShareFeedback(''), 2400)
   }
 
   const isShowcasePlan = ['presenca', 'landingpage'].includes(String(store?.plan || '').toLowerCase())
@@ -1139,26 +1209,37 @@ export default function LojaPublicPage() {
                   </div>
 
                   {/* Info */}
-                  <div className="flex flex-col flex-1 p-3 gap-1 min-w-0">
+                  <div className="flex flex-col flex-1 p-2.5 gap-0.5 min-w-0">
                     <h3 className="text-sm font-semibold text-gray-900 leading-snug">{product.name}</h3>
                     {product.description && (
                       <p className="text-xs text-gray-500 line-clamp-2 flex-1 leading-relaxed">{product.description}</p>
                     )}
-                    <div className="flex items-center justify-between mt-auto pt-2">
+                    <div className="mt-auto pt-1.5 space-y-1.5">
                       {product.category === 'Pizza' ? (
-                        <span className="text-xs text-gray-500 italic">Escolha tamanho e sabores</span>
+                        <span className="block text-xs text-gray-500 italic">Escolha tamanho e sabores</span>
                       ) : (
-                        <span className="text-base font-bold" style={{ color: theme.primary }}>
+                        <span className="block text-base font-bold" style={{ color: theme.primary }}>
                           R$ {product.price.toFixed(2)}
                         </span>
                       )}
-                      <button
-                        onClick={() => openProductModal(product)}
-                        className="ml-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity flex-shrink-0"
-                        style={{ backgroundColor: theme.secondary, color: secondaryTextColor }}
-                      >
-                        {product.category === 'Pizza' ? '🍕 Montar' : product.has_variants ? 'Personalizar' : '+ Adicionar'}
-                      </button>
+                      <div className="flex flex-col gap-1.5">
+                        {isSharePlan && (
+                          <button
+                            onClick={() => setShareProduct(product)}
+                            className="inline-flex w-full items-center justify-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
+                            <IconShare />
+                            Compartilhar
+                          </button>
+                        )}
+                        <button
+                          onClick={() => openProductModal(product)}
+                          className="inline-flex w-full items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold hover:opacity-90 transition-opacity"
+                          style={{ backgroundColor: theme.secondary, color: secondaryTextColor }}
+                        >
+                          {product.category === 'Pizza' ? '🍕 Montar' : product.has_variants ? 'Personalizar' : '+ Adicionar'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1211,6 +1292,15 @@ export default function LojaPublicPage() {
                     >
                       🛒 {product.category === 'Pizza' ? 'Montar pizza' : product.has_variants ? 'Personalizar pedido' : 'Adicionar ao Carrinho'}
                     </button>
+                    {isSharePlan && (
+                      <button
+                        onClick={() => setShareProduct(product)}
+                        className="mt-2 w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-300 font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        <IconShare />
+                        Compartilhar produto
+                      </button>
+                    )}
                   </div>
                 </div>
               )
@@ -1476,6 +1566,63 @@ export default function LojaPublicPage() {
             </div>
           </div>
         )}
+
+      {/* Modal de Compartilhamento de Produto */}
+      {shareProduct && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6">
+            <h3 className="text-xl font-bold text-gray-900">Compartilhar produto</h3>
+            <p className="mt-1 text-sm text-gray-600">{shareProduct.name}</p>
+
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {supportsNativeShare && (
+                <button
+                  type="button"
+                  onClick={() => shareNatively(shareProduct)}
+                  className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-900 sm:col-span-2"
+                >
+                  Compartilhar nativo (recomendado no celular)
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => shareViaWhatsApp(shareProduct)}
+                className="rounded-lg bg-green-500 px-3 py-2 text-sm font-semibold text-white hover:bg-green-600"
+              >
+                WhatsApp
+              </button>
+              <button
+                type="button"
+                onClick={() => shareViaFacebook(shareProduct)}
+                className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              >
+                Facebook
+              </button>
+              <button
+                type="button"
+                onClick={() => copyShareLink(shareProduct)}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                Copiar link
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShareProduct(null)}
+              className="mt-4 w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {shareFeedback && (
+        <div className="fixed bottom-4 left-1/2 z-[60] -translate-x-1/2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-lg">
+          {shareFeedback}
+        </div>
+      )}
 
       {/* Modal de Seleção de Pizza */}
       <PizzaSelectionModal

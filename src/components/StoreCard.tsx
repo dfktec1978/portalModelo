@@ -12,6 +12,8 @@ interface StoreCardProps {
     description?: string;
     logo?: string;
     external_url?: string | null;
+    average_rating?: number | null;
+    review_count?: number;
   };
   internalHref?: string | null;
 }
@@ -77,20 +79,32 @@ export default function StoreCard({ store, internalHref }: StoreCardProps) {
   };
 
   return (
-    <div className="bg-white p-5 rounded-lg shadow-sm hover:shadow-md transition-colors">
+    <div className="bg-white p-5 rounded-lg shadow-sm hover:shadow-md transition-colors h-full min-h-[320px] flex flex-col">
       {renderLogo()}
 
       <h3 className="text-lg font-semibold text-[#003049] text-center">
         {store.store_name || store.name || "Loja sem nome"}
       </h3>
 
-      {store.description && (
-        <p className="text-sm text-gray-600 mt-2 line-clamp-3 text-center">
-          {store.description}
-        </p>
+      {store.average_rating != null && (store.review_count ?? 0) > 0 ? (
+        <div className="flex items-center justify-center gap-1 mt-0.5 text-sm">
+          <span className="text-yellow-400">★</span>
+          <span className="font-medium text-gray-700">{store.average_rating.toFixed(1)}</span>
+          <span className="text-gray-400 text-xs">({store.review_count})</span>
+        </div>
+      ) : (
+        <div className="text-center mt-0.5 text-xs text-gray-400">Sem avaliações</div>
       )}
 
-      <div className="mt-4 flex justify-center">
+      <div className="mt-2 min-h-[60px]">
+        {store.description && (
+          <p className="text-sm text-gray-600 line-clamp-3 text-center">
+            {store.description}
+          </p>
+        )}
+      </div>
+
+      <div className="mt-auto pt-4 flex justify-center">
         {href || visitUrl ? (
           <a
             href={href || visitUrl}

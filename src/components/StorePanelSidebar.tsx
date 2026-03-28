@@ -6,7 +6,7 @@ import { resolveStoreLimits } from "@/lib/storePlans";
 
 type Props = {
   view: string;
-  setView: (v: 'overview'|'orders'|'finance'|'appearance'|'settings'|'payments'|'products'|'menu'|'profile'|'schedule'|'stock'|'additionals'|'categories'|'pizza-flavors'|'variants'|'landing-profile') => void;
+  setView: (v: 'overview'|'orders'|'finance'|'appearance'|'settings'|'payments'|'products'|'menu'|'profile'|'schedule'|'stock'|'additionals'|'categories'|'pizza-flavors'|'variants'|'landing-profile'|'reviews') => void;
   category?: 'varejo' | 'alimentacao';
   setCategory?: (v: 'varejo' | 'alimentacao') => void;
   selectedStoreSlug?: string | null;
@@ -229,6 +229,9 @@ export default function StorePanelSidebar({ view, setView, selectedStoreSlug, se
           <button className={`text-left p-2 rounded text-sm ${view === 'payments' ? 'bg-slate-700 font-semibold' : 'hover:bg-slate-700'}`} onClick={() => setView('payments')}>
             💳 Pagamentos
           </button>
+            <button className={`text-left p-2 rounded text-sm ${view === 'reviews' ? 'bg-slate-700 font-semibold' : 'hover:bg-slate-700'}`} onClick={() => setView('reviews')}>
+              ⭐ Avaliações
+            </button>
         </nav>
       </div>
 

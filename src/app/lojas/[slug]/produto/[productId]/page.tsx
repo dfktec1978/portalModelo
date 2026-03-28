@@ -11,6 +11,7 @@ type Store = {
   id: string
   store_name: string
   slug: string
+  plan?: string | null
   category: 'varejo' | 'alimentacao'
   theme_color: string
   logo_url: string | null
@@ -43,6 +44,18 @@ function resolveThemeId(themeColor?: string | null): ThemeColor {
   return 'azul'
 }
 
+function IconShare() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
+      <circle cx="18" cy="5" r="2.5" />
+      <circle cx="6" cy="12" r="2.5" />
+      <circle cx="18" cy="19" r="2.5" />
+      <path d="m8.2 11 7.5-4.2" />
+      <path d="m8.2 13 7.5 4.2" />
+    </svg>
+  )
+}
+
 export default function ProductPage() {
   const params = useParams()
   const router = useRouter()
@@ -52,6 +65,8 @@ export default function ProductPage() {
   const [store, setStore] = useState<Store | null>(null)
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showShareOptions, setShowShareOptions] = useState(false)
+  const [shareFeedback, setShareFeedback] = useState('')
   
   // Estados para galeria
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
@@ -204,6 +219,68 @@ export default function ProductPage() {
     
     // Redirecionar para loja
     router.push(`/lojas/${slug}`)
+  }
+
+  const canShareProduct = ['destaque', 'premium'].includes(String(store?.plan || '').toLowerCase())
+  const supportsNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
+
+  const buildProductLink = () => {
+    if (typeof window === 'undefined') return ''
+    return `${window.location.origin}/lojas/${slug}/produto/${productId}`
+  }
+
+  const buildShareText = () => {
+    const storeName = store?.store_name || 'Portal Modelo'
+    const productName = product?.name || 'Produto'
+    return `Confira ${productName} da loja ${storeName}`
+  }
+
+  const shareViaWhatsApp = () => {
+    const link = buildProductLink()
+    if (!link) return
+    const text = `${buildShareText()}\n\n${link}`
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
+    setShowShareOptions(false)
+  }
+
+  const shareNatively = async () => {
+    const link = buildProductLink()
+    if (!link || !supportsNativeShare) return
+
+    try {
+      await navigator.share({
+        title: product?.name || 'Produto',
+        text: buildShareText(),
+        url: link,
+      })
+      setShowShareOptions(false)
+    } catch (error: any) {
+      // Cancelamento manual do share não precisa exibir erro.
+      if (error?.name !== 'AbortError') {
+        setShareFeedback('Não foi possível abrir o compartilhamento nativo.')
+        setTimeout(() => setShareFeedback(''), 2400)
+      }
+    }
+  }
+
+  const shareViaFacebook = () => {
+    const link = buildProductLink()
+    if (!link) return
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`, '_blank', 'noopener,noreferrer')
+    setShowShareOptions(false)
+  }
+
+  const copyShareLink = async () => {
+    const link = buildProductLink()
+    if (!link) return
+    try {
+      await navigator.clipboard.writeText(link)
+      setShareFeedback('Link copiado!')
+    } catch {
+      setShareFeedback('Não foi possível copiar o link.')
+    }
+    setShowShareOptions(false)
+    setTimeout(() => setShareFeedback(''), 2400)
   }
 
   if (loading) {
@@ -420,6 +497,56 @@ export default function ProductPage() {
             >
               🛒 Adicionar ao Carrinho
             </button>
+
+            {canShareProduct && (
+              <div className="rounded-lg border border-gray-200 bg-white p-3">
+                <button
+                  type="button"
+                  onClick={() => setShowShareOptions((prev) => !prev)}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  <IconShare />
+                  Compartilhar produto
+                </button>
+                {showShareOptions && (
+                  <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {supportsNativeShare && (
+                      <button
+                        type="button"
+                        onClick={shareNatively}
+                        className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-900 sm:col-span-2"
+                      >
+                        Compartilhar nativo (recomendado no celular)
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={shareViaWhatsApp}
+                      className="rounded-lg bg-green-500 px-3 py-2 text-sm font-semibold text-white hover:bg-green-600"
+                    >
+                      WhatsApp
+                    </button>
+                    <button
+                      type="button"
+                      onClick={shareViaFacebook}
+                      className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                    >
+                      Facebook
+                    </button>
+                    <button
+                      type="button"
+                      onClick={copyShareLink}
+                      className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                    >
+                      Copiar link
+                    </button>
+                  </div>
+                )}
+                {shareFeedback && (
+                  <p className="mt-2 text-xs text-green-700">{shareFeedback}</p>
+                )}
+              </div>
+            )}
 
             {/* Informações Técnicas */}
             {(product.technical_description || product.composition) && (

@@ -2,6 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseServer';
 import { getPlanDefaults, normalizeStorePlan } from '@/lib/storePlans';
 import { getServerPlanDefaults } from '@/lib/storePlansServer';
+import externalStores from '@/data/externalStores';
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isMissingTableError(error: any, tableName: string) {
+  const code = String(error?.code || '')
+  const message = String(error?.message || '')
+  return (
+    code === 'PGRST205' ||
+    new RegExp(`could not find the table .*${tableName}`, 'i').test(message) ||
+    new RegExp(`relation .*${tableName}.*does not exist`, 'i').test(message)
+  )
+}
 
 function slugifyStoreName(value: unknown) {
   return String(value || '')
@@ -37,6 +50,13 @@ function normalizeStoreCategory(value: unknown): string {
   const raw = String(value || '').trim();
   if (!raw) return 'varejo';
   return raw; // armazena a categoria amigável diretamente (ex: "Restaurante")
+}
+
+function isMissingColumnError(error: any, columnName: string) {
+  const message = String(error?.message || '')
+  return new RegExp(`could not find the '${columnName}' column`, 'i').test(message)
+    || new RegExp(`column .*${columnName}.* does not exist`, 'i').test(message)
+    || /schema cache/i.test(message)
 }
 
 function normalizeStore(row: any, ownerProfile?: any) {
@@ -236,6 +256,127 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
+
+    // Ações em lote (admin)
+    if (body?.action === 'bulk_sync_plan_weights') {
+      const { data: rows, error: fetchError } = await supabaseAdmin
+        .from('stores')
+        .select('id, plan')
+
+      if (fetchError) {
+        return NextResponse.json({ error: fetchError.message || 'Erro ao buscar lojas' }, { status: 500 });
+      }
+
+      const stores = (rows as any[]) || [];
+      let updated = 0;
+
+      for (const store of stores) {
+        const defaults = getPlanDefaults(normalizeStorePlan(store.plan));
+        const { error: updateError } = await supabaseAdmin
+          .from('stores')
+          .update({ priority_weight: defaults.priority_weight })
+          .eq('id', store.id);
+
+        if (!updateError) updated += 1;
+      }
+
+      return NextResponse.json({ success: true, updated, total: stores.length });
+    }
+
+    if (body?.action === 'bulk_upsert_rating_overrides') {
+      const overrides = Array.isArray(body?.overrides) ? body.overrides : [];
+      if (overrides.length === 0) {
+        return NextResponse.json({ error: 'Nenhum override informado' }, { status: 400 });
+      }
+
+      const validRows: any[] = [];
+      const skipped: Array<{ store_ref: string; reason: string }> = [];
+      for (const item of overrides) {
+        const storeRef = String(item?.store_id || item?.store_ref || item?.slug || '').trim().toLowerCase();
+        const avg = Number(item?.avg_rating_legacy);
+        const count = Number(item?.total_reviews_legacy);
+        const source = String(item?.source_note || 'Ajuste legado via admin').slice(0, 120);
+
+        if (!storeRef) {
+          skipped.push({ store_ref: storeRef, reason: 'store_ref vazio' });
+          continue;
+        }
+        if (!Number.isFinite(avg) || avg < 0 || avg > 5) {
+          skipped.push({ store_ref: storeRef, reason: 'nota inválida (0..5)' });
+          continue;
+        }
+        if (!Number.isFinite(count) || count < 0) {
+          skipped.push({ store_ref: storeRef, reason: 'total_reviews inválido (>=0)' });
+          continue;
+        }
+
+        // Resolve referência de loja: UUID/slug interno ou id externo conhecido
+        let resolvedStoreId = '';
+        let resolvedStoreRef = '';
+        if (UUID_REGEX.test(storeRef)) {
+          resolvedStoreId = storeRef;
+        } else {
+          const { data: storeBySlug } = await supabaseAdmin
+            .from('stores')
+            .select('id')
+            .eq('slug', storeRef)
+            .maybeSingle();
+
+          if (storeBySlug?.id) {
+            resolvedStoreId = String((storeBySlug as any).id);
+          } else {
+            // Loja externa conhecida: usa referência externa sem criar novo registro em stores
+            const external = (externalStores || []).find((item: any) => String(item.id) === storeRef);
+            if (!external) {
+              skipped.push({ store_ref: storeRef, reason: 'loja não encontrada por slug' });
+              continue;
+            }
+            resolvedStoreRef = storeRef;
+          }
+        }
+
+        validRows.push({
+          store_id: resolvedStoreId || null,
+          store_ref: resolvedStoreRef || null,
+          avg_rating_legacy: Math.round(avg * 10) / 10,
+          total_reviews_legacy: Math.round(count),
+          source_note: source,
+          active: true,
+          updated_by: userId,
+        });
+      }
+
+      if (validRows.length === 0) {
+        return NextResponse.json({ error: 'Nenhum override válido', skipped }, { status: 400 });
+      }
+
+      const hasExternalRefs = validRows.some((row) => row.store_ref)
+      const { data: upserted, error: upsertError } = await supabaseAdmin
+        .from('store_rating_overrides')
+        .upsert(validRows, { onConflict: hasExternalRefs ? 'store_ref' : 'store_id' })
+        .select('store_id');
+
+      if (upsertError) {
+        if (hasExternalRefs && isMissingColumnError(upsertError, 'store_ref')) {
+          return NextResponse.json({
+            error: 'A tabela store_rating_overrides ainda não suporta lojas externas. Execute a migration sql/alter-store-rating-overrides-support-external-ref.sql',
+          }, { status: 400 });
+        }
+        if (isMissingTableError(upsertError, 'store_rating_overrides')) {
+          return NextResponse.json({
+            error: 'Tabela store_rating_overrides não encontrada. Execute a migration sql/add-store-rating-overrides.sql',
+          }, { status: 400 });
+        }
+        return NextResponse.json({ error: upsertError.message || 'Erro ao salvar overrides' }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        updated: (upserted || []).length,
+        skipped,
+      });
+    }
+
     const { storeId, logo_url, landing_photo_urls } = body;
 
     if (!storeId) {

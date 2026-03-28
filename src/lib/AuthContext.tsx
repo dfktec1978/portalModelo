@@ -91,6 +91,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut();
+      if (!error) {
+        return { error: null };
+      }
+
+      const message = String((error as any)?.message || "").toLowerCase();
+      if (message.includes("invalid refresh token") || message.includes("refresh token not found")) {
+        const { error: localError } = await supabase.auth.signOut({ scope: "local" });
+        return { error: localError };
+      }
+
       return { error };
     } catch (err) {
       return { error: err };

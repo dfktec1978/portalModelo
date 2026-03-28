@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+import ReviewWidget from "@/components/ReviewWidget";
 
 const FOOD_STATUS_MAP: Record<string, string> = {
   pending: "Pendente",
@@ -64,6 +65,14 @@ export default function MinhasComprasPage() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [recentlyUpdatedId, setRecentlyUpdatedId] = useState<string | null>(null);
+  const [reviewedOrderIds, setReviewedOrderIds] = useState<Set<string>>(new Set());
+  const [reviewsByOrderId, setReviewsByOrderId] = useState<Record<string, {
+    rating: number;
+    comment: string;
+    owner_reply?: string | null;
+    replied_at?: string | null;
+    created_at?: string | null;
+  }>>({});
   const userIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -100,6 +109,36 @@ export default function MinhasComprasPage() {
           throw customerAttempt.error;
         } else {
           data = customerAttempt.data || [];
+        }
+
+        // Carregar avaliações do cliente para exibir em "Minhas Compras"
+        const orderIds = (data || []).map((o: any) => o.id);
+        if (orderIds.length > 0) {
+          const { data: reviewedData } = await supabase
+            .from('store_reviews')
+            .select('order_id, rating, comment, owner_reply, replied_at, created_at')
+            .eq('customer_id', user.id);
+
+          const reviewMap: Record<string, {
+            rating: number;
+            comment: string;
+            owner_reply?: string | null;
+            replied_at?: string | null;
+            created_at?: string | null;
+          }> = {};
+
+          (reviewedData || []).forEach((r: any) => {
+            reviewMap[String(r.order_id)] = {
+              rating: Number(r.rating || 0),
+              comment: String(r.comment || ''),
+              owner_reply: r.owner_reply || null,
+              replied_at: r.replied_at || null,
+              created_at: r.created_at || null,
+            };
+          });
+
+          setReviewedOrderIds(new Set(Object.keys(reviewMap)));
+          setReviewsByOrderId(reviewMap);
         }
 
         const list = data || [];
@@ -160,19 +199,36 @@ export default function MinhasComprasPage() {
         });
     };
 
-    // Tenta imediatamente; se userId ainda não estiver pronto, tenta novamente após carregamento
-    if (userIdRef.current) {
-      setupRealtime();
-    } else {
-      const timer = setTimeout(setupRealtime, 1500);
-      return () => clearTimeout(timer);
-    }
+    setupRealtime();
 
     return () => {
       if (channel) supabase.removeChannel(channel);
       setRealtimeConnected(false);
     };
-  }, [loading]); // re-executa depois que loadOrders terminar
+  }, [loading]); // re-executa logo após loadOrders terminar (loading vira false)
+
+  // Polling de fallback a cada 15s + ao focar janela (garante atualização quando Realtime falha)
+  useEffect(() => {
+    const uid = userIdRef.current;
+    if (!uid) return;
+
+    const silentRefresh = async () => {
+      const { data } = await supabase
+        .from("orders")
+        .select("*, stores:store_id (id, store_name, slug, category)")
+        .eq("customer_id", uid)
+        .order("created_at", { ascending: false });
+      if (data) setOrders(data);
+    };
+
+    const interval = setInterval(silentRefresh, 15000);
+    const onFocus = () => silentRefresh();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [loading]); // inicia depois da carga inicial
 
   const restoreStock = async (order: any) => {
     if (!order?.items) return;
@@ -241,28 +297,6 @@ export default function MinhasComprasPage() {
         .update({ status: "cancelled" })
         .eq("id", order.id);
 
-      // Fallback de polling: re-busca pedidos a cada 30s e ao focar a janela
-      useEffect(() => {
-        const uid = userIdRef.current;
-        if (!uid) return;
-
-        const silentRefresh = async () => {
-          const { data } = await supabase
-            .from("orders")
-            .select("*, stores:store_id (id, store_name, slug, category)")
-            .eq("customer_id", uid)
-            .order("created_at", { ascending: false });
-          if (data) setOrders(data);
-        };
-
-        const interval = setInterval(silentRefresh, 30000);
-        const onFocus = () => silentRefresh();
-        window.addEventListener('focus', onFocus);
-        return () => {
-          clearInterval(interval);
-          window.removeEventListener('focus', onFocus);
-        };
-      }, [loading]); // inicia depois da carga inicial
       if (updateError) throw updateError;
 
       await restoreStock(order);
@@ -390,6 +424,18 @@ export default function MinhasComprasPage() {
                       </button>
                     );
                   })()}
+                  <ReviewWidget
+                    order={order}
+                    alreadyReviewed={reviewedOrderIds.has(order.id)}
+                    existingReview={reviewsByOrderId[order.id] || null}
+                    onReviewSubmittedAction={(orderId, review) => {
+                      setReviewedOrderIds((prev) => new Set([...prev, orderId]));
+                      setReviewsByOrderId((prev) => ({
+                        ...prev,
+                        [orderId]: review,
+                      }));
+                    }}
+                  />
                 </div>
               </div>
             );

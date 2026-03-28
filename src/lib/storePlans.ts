@@ -29,7 +29,7 @@ export const PLAN_CONFIG: PlanConfigMap = {
     priceLabel: 'Grátis',
     productLimit: 0,
     photoLimit: 1,
-    priorityWeight: 1,
+    priorityWeight: 0,
   },
   landingpage: {
     id: 'landingpage',

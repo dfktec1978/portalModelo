@@ -101,6 +101,7 @@ export default function StoreOrdersModuleFood({ store }: Props) {
   const [message, setMessage] = useState('')
   const [nowMs, setNowMs] = useState(Date.now())
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
+  const [realtimeConnected, setRealtimeConnected] = useState(false)
   const realtimeRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -159,12 +160,14 @@ export default function StoreOrdersModuleFood({ store }: Props) {
           setOrders(prev => prev.filter(o => o.id !== payload.old.id))
         }
       })
-      .subscribe()
+      .subscribe((status) => {
+        setRealtimeConnected(status === 'SUBSCRIBED')
+      })
 
     realtimeRef.current = channel
 
-    // Polling de fallback (30s)
-    pollingRef.current = setInterval(() => fetchOrders(true), 30000)
+    // Polling de fallback a cada 10s para alimentação (pedidos são urgentes)
+    pollingRef.current = setInterval(() => fetchOrders(true), 10000)
 
     // Re-busca ao focar a janela
     const handleFocus = () => fetchOrders(true)
@@ -172,6 +175,7 @@ export default function StoreOrdersModuleFood({ store }: Props) {
 
     return () => {
       supabase.removeChannel(channel)
+      setRealtimeConnected(false)
       if (pollingRef.current) clearInterval(pollingRef.current)
       window.removeEventListener('focus', handleFocus)
     }
@@ -179,30 +183,43 @@ export default function StoreOrdersModuleFood({ store }: Props) {
   }, [store])
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    // Atualização otimista: reflete na UI imediatamente sem esperar o Realtime
+    const previous = orders.find(o => o.id === orderId)
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o))
+    setSelectedOrder(prev => prev?.id === orderId ? { ...prev, status: newStatus } : prev)
     try {
       const { error } = await supabase.from('orders').update({ status: newStatus }).eq('id', orderId)
       if (error) throw error
       setMessage(`Status → ${STATUS_MAP[newStatus as keyof typeof STATUS_MAP]?.label || newStatus}`)
       setTimeout(() => setMessage(''), 2500)
     } catch (err) {
+      // Reverte a atualização otimista em caso de erro
+      if (previous) {
+        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...previous } : o))
+        setSelectedOrder(prev => prev?.id === orderId ? { ...prev, ...previous } : prev)
+      }
       console.error('Erro ao atualizar status:', err)
       setMessage('Erro ao atualizar status')
     }
   }
 
   const updatePaymentStatus = async (orderId: string, newStatus: string) => {
+    const current = orders.find(o => o.id === orderId)
+    if (current?.status === 'cancelled') {
+      setMessage('Pedidos cancelados não podem ser pagos')
+      setTimeout(() => setMessage(''), 3000)
+      return
+    }
+    // Atualização otimista
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, payment_status: newStatus } : o))
     try {
-      const current = orders.find(o => o.id === orderId)
-      if (current?.status === 'cancelled') {
-        setMessage('Pedidos cancelados não podem ser pagos')
-        setTimeout(() => setMessage(''), 3000)
-        return
-      }
       const { error } = await supabase.from('orders').update({ payment_status: newStatus }).eq('id', orderId)
       if (error) throw error
       setMessage('Pagamento confirmado')
       setTimeout(() => setMessage(''), 2500)
     } catch (err) {
+      // Reverte
+      if (current) setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...current } : o))
       console.error('Erro ao confirmar pagamento:', err)
       setMessage('Erro ao confirmar pagamento')
     }
@@ -305,8 +322,10 @@ export default function StoreOrdersModuleFood({ store }: Props) {
           <div>
             <h3 className="text-lg font-bold text-gray-900 leading-tight">Pedidos — Alimentação</h3>
             <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="inline-block w-2 h-2 rounded-full bg-green-400" />
-              <span className="text-xs text-gray-500">Tempo real · atualiza automaticamente</span>
+              <span className={`inline-block w-2 h-2 rounded-full transition-colors ${realtimeConnected ? 'bg-green-400 animate-pulse' : 'bg-gray-300'}`} />
+              <span className="text-xs text-gray-500">
+                {realtimeConnected ? 'Ao vivo · atualiza automaticamente' : 'Reconectando…'}
+              </span>
             </div>
           </div>
         </div>

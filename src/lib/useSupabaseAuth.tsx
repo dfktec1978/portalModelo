@@ -8,6 +8,11 @@ type SupabaseUser = {
   user_metadata?: any;
 };
 
+function isInvalidRefreshTokenError(error: unknown) {
+  const message = String((error as any)?.message || "").toLowerCase();
+  return message.includes("invalid refresh token") || message.includes("refresh token not found");
+}
+
 export function useSupabaseAuth() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -17,15 +22,30 @@ export function useSupabaseAuth() {
 
     async function load() {
       try {
-        const { data } = await supabase.auth.getUser();
+        const { data, error } = await supabase.auth.getSession();
+
+        if (error) {
+          if (isInvalidRefreshTokenError(error)) {
+            // Limpa credenciais locais inválidas para evitar loop de erro.
+            await supabase.auth.signOut({ scope: "local" });
+            if (!mounted) return;
+            setUser(null);
+            return;
+          }
+          throw error;
+        }
+
         if (!mounted) return;
-        if (data?.user) {
-          setUser({ id: data.user.id, email: data.user.email, user_metadata: data.user.user_metadata });
+        if (data?.session?.user) {
+          const sessionUser = data.session.user;
+          setUser({ id: sessionUser.id, email: sessionUser.email, user_metadata: sessionUser.user_metadata });
         } else {
           setUser(null);
         }
       } catch (e) {
-        console.error('Erro ao obter usuário Supabase', e);
+        if (!isInvalidRefreshTokenError(e)) {
+          console.error('Erro ao obter sessão Supabase', e);
+        }
         setUser(null);
       } finally {
         if (mounted) setLoading(false);

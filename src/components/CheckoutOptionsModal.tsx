@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { matchDeliveryCityRule, normalizeText, toZipDigits, type DeliveryCityRule } from '@/lib/deliveryPolicy'
 
 type DeliveryOption = 'retirada' | 'envio' | 'condicional'
 
@@ -38,6 +39,16 @@ type CheckoutOptionsModalProps = {
     delivery_fee_envio?: number
     delivery_fee_condicional?: number
     min_order_delivery?: number
+    free_shipping_threshold?: number
+    base_city?: {
+      city?: string
+      state?: string
+      zipcode?: string
+      delivery_fee?: number
+      eta_business_days?: number
+      active?: boolean
+    }
+    delivery_city_rules?: DeliveryCityRule[]
     payment_options: {
       pix: boolean
       na_retirada: boolean
@@ -97,7 +108,55 @@ export default function CheckoutOptionsModal({
   const [agreed, setAgreed] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string>('')
   const [clientData, setClientData] = useState<{ name: string; email: string; phone: string } | null>(null)
+  const [clientLocation, setClientLocation] = useState<{ city: string; state: string; zipcode: string }>({ city: '', state: '', zipcode: '' })
   const [loadingClient, setLoadingClient] = useState(false)
+
+  const allDeliveryRules = useMemo(() => {
+    const base = storeConfig.base_city
+      ? [{
+          city: String(storeConfig.base_city.city || ''),
+          state: String(storeConfig.base_city.state || ''),
+          zipcode: String(storeConfig.base_city.zipcode || ''),
+          delivery_fee: Number(storeConfig.base_city.delivery_fee || 0),
+          eta_business_days: Number(storeConfig.base_city.eta_business_days || 1),
+          active: storeConfig.base_city.active !== false,
+          is_base_city: true,
+        }]
+      : []
+
+    const extra = Array.isArray(storeConfig.delivery_city_rules)
+      ? storeConfig.delivery_city_rules.map((rule) => ({
+          ...rule,
+          city: String(rule.city || ''),
+          state: String(rule.state || ''),
+          zipcode: String(rule.zipcode || ''),
+          delivery_fee: Number(rule.delivery_fee || 0),
+          eta_business_days: Number(rule.eta_business_days || 1),
+          active: rule.active !== false,
+        }))
+      : []
+
+    return [...base, ...extra]
+  }, [storeConfig.base_city, storeConfig.delivery_city_rules])
+
+  const matchedDeliveryRule = useMemo(() => {
+    if (!clientLocation.city && !clientLocation.zipcode) return null
+    return matchDeliveryCityRule(allDeliveryRules, clientLocation)
+  }, [allDeliveryRules, clientLocation])
+
+  const freeShippingThreshold = Number(storeConfig.free_shipping_threshold || 0)
+
+  const getSelectedDeliveryFee = () => {
+    if (selectedDelivery === 'retirada') return 0
+    if (selectedDelivery === 'envio') {
+      const baseFee = matchedDeliveryRule
+        ? Number(matchedDeliveryRule.delivery_fee || 0)
+        : Number(storeConfig.delivery_fee_envio || 0)
+      if (freeShippingThreshold > 0 && cartTotal >= freeShippingThreshold) return 0
+      return baseFee
+    }
+    return Number(storeConfig.delivery_fee_condicional || 0)
+  }
 
   useEffect(() => {
     if (isFoodStore) {
@@ -140,6 +199,11 @@ export default function CheckoutOptionsModal({
             name: profile.display_name || user.email?.split('@')[0] || 'Usuário',
             email: profile.email || user.email || '',
             phone: profile.phone || ''
+          })
+          setClientLocation({
+            city: String(profile.city || ''),
+            state: String(profile.state || ''),
+            zipcode: String(profile.zipcode || ''),
           })
           if (profile.address) {
             setAddress((prev) => {
@@ -189,17 +253,29 @@ export default function CheckoutOptionsModal({
       return
     }
 
+    if (selectedDelivery === 'envio') {
+      const hasLocation = !!normalizeText(clientLocation.city) && !!normalizeText(clientLocation.state)
+      if (!hasLocation) {
+        setErrorMsg('Complete cidade e estado no seu cadastro para calcular a entrega automaticamente.')
+        return
+      }
+
+      if (!matchedDeliveryRule) {
+        if (availableDelivery.condicional) {
+          setErrorMsg('Sua cidade não está na cobertura de entrega própria. Selecione "Sob consulta".')
+        } else {
+          setErrorMsg('Entrega própria indisponível para sua cidade no momento.')
+        }
+        return
+      }
+    }
+
     if (!agreed) {
       setErrorMsg('Você precisa concordar com os termos')
       return
     }
 
-    let fee = 0
-    if (selectedDelivery === 'envio') {
-      fee = storeConfig.delivery_fee_envio || 0
-    } else if (selectedDelivery === 'condicional') {
-      fee = storeConfig.delivery_fee_condicional || 0
-    }
+    const fee = getSelectedDeliveryFee()
 
     const dateTime = isFoodStore && scheduleMode === 'now'
       ? new Date()
@@ -270,6 +346,13 @@ export default function CheckoutOptionsModal({
                 </div>
               ) : (
                 <div className="text-sm text-red-600">Não foi possível carregar seus dados.</div>
+              )}
+              {clientData && (
+                <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-900">
+                  Entrega calculada automaticamente com base em: {clientLocation.city || 'Cidade não informada'}
+                  {clientLocation.state ? `/${clientLocation.state}` : ''}
+                  {clientLocation.zipcode ? ` • CEP ${clientLocation.zipcode}` : ''}
+                </div>
               )}
             </div>
           </div>
@@ -372,8 +455,28 @@ export default function CheckoutOptionsModal({
                     🚚 Envio a Domicílio
                   </div>
                   <div className={`text-sm ${selectedDelivery === 'envio' ? 'text-gray-100' : 'text-gray-600'}`}>
-                    +R$ {(storeConfig.delivery_fee_envio || 0).toFixed(2)}
+                    +R$ {getSelectedDeliveryFee().toFixed(2)}
                   </div>
+                  {matchedDeliveryRule && (
+                    <div className={`text-xs mt-1 ${selectedDelivery === 'envio' ? 'text-gray-100' : 'text-gray-500'}`}>
+                      Cobertura: {matchedDeliveryRule.city}/{matchedDeliveryRule.state}
+                      {matchedDeliveryRule.eta_business_days
+                        ? (isFoodStore
+                            ? ` • ~${matchedDeliveryRule.eta_business_days} min`
+                            : ` • ${matchedDeliveryRule.eta_business_days} dia(s) útil(is)`)
+                        : ''}
+                    </div>
+                  )}
+                  {!matchedDeliveryRule && (
+                    <div className={`text-xs mt-1 ${selectedDelivery === 'envio' ? 'text-gray-100' : 'text-red-500'}`}>
+                      Cidade fora da cobertura automática
+                    </div>
+                  )}
+                  {freeShippingThreshold > 0 && (
+                    <div className={`text-xs mt-1 ${selectedDelivery === 'envio' ? 'text-gray-100' : 'text-emerald-600'}`}>
+                      Frete grátis a partir de R$ {freeShippingThreshold.toFixed(2)}
+                    </div>
+                  )}
                 </div>
               </label>
             )}
@@ -394,7 +497,7 @@ export default function CheckoutOptionsModal({
                 />
                 <div>
                   <div className={`font-semibold ${selectedDelivery === 'condicional' ? 'text-white' : 'text-gray-900'}`}>
-                    📦 Condicional (Retirar na loja)
+                    📦 Sob consulta
                   </div>
                   <div className={`text-sm ${selectedDelivery === 'condicional' ? 'text-gray-100' : 'text-gray-600'}`}>
                     +R$ {(storeConfig.delivery_fee_condicional || 0).toFixed(2)}

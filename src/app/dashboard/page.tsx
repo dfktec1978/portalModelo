@@ -11,6 +11,7 @@ import StoreFinanceModule from "@/components/StoreFinanceModule";
 import StoreSettings from "@/components/StoreSettings";
 import StorePaymentSettings from "@/components/StorePaymentSettings";
 import StoreLandingProfileSettings from "@/components/StoreLandingProfileSettings";
+import StoreReviewsModule from "@/components/StoreReviewsModule";
 import StoreModuleSchedule from "@/components/StoreModuleSchedule";
 import StoreModuleStock from "@/components/StoreModuleStock";
 import StoreModuleAdditionals from "@/components/StoreModuleAdditionals";
@@ -28,7 +29,7 @@ export default function DashboardPage() {
   const { profile, loading: profileLoading } = useProfile();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [view, setView] = useState<'overview'|'orders'|'finance'|'appearance'|'settings'|'payments'|'products'|'menu'|'profile'|'schedule'|'stock'|'additionals'|'categories'|'pizza-flavors'|'variants'|'landing-profile'>('overview');
+  const [view, setView] = useState<'overview'|'orders'|'finance'|'appearance'|'settings'|'payments'|'products'|'menu'|'profile'|'schedule'|'stock'|'additionals'|'categories'|'pizza-flavors'|'variants'|'landing-profile'|'reviews'>('overview');
   const [selectedStoreSlug, setSelectedStoreSlug] = useState<string | null>(null);
   const [store, setStore] = useState<any>(null);
   const [stores, setStores] = useState<Array<any>>([]);
@@ -76,7 +77,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const paramView = searchParams?.get('view');
     if (!paramView) return;
-    const allowedViews = ['overview','orders','finance','appearance','settings','products','menu','profile','schedule','stock','additionals','categories','pizza-flavors','variants','landing-profile'];
+    const allowedViews = ['overview','orders','finance','appearance','settings','products','menu','profile','schedule','stock','additionals','categories','pizza-flavors','variants','landing-profile','reviews'];
     if (allowedViews.includes(paramView)) {
       setView(paramView as any);
     }
@@ -488,6 +489,9 @@ export default function DashboardPage() {
                 )}
                 {view === 'variants' && (
                   <StoreModuleVariants store={store} />
+                )}
+                {view === 'reviews' && (
+                  <StoreReviewsModule store={store} />
                 )}
               </section>
             </>

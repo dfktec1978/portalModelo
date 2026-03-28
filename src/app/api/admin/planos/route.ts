@@ -60,7 +60,39 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ plans: data || normalized });
+    // Mantem as lojas existentes sincronizadas com os limites definidos no plano.
+    const syncResults = await Promise.all(
+      normalized.map(async (plan) => {
+        const { error: syncError } = await supabaseAdmin
+          .from('stores')
+          .update({
+            product_limit: plan.product_limit,
+            photo_limit: plan.photo_limit,
+            priority_weight: plan.priority_weight,
+          })
+          .eq('plan', plan.id);
+
+        return {
+          planId: plan.id,
+          ok: !syncError,
+          error: syncError?.message || null,
+        };
+      }),
+    );
+
+    const failedSync = syncResults.find((item) => !item.ok);
+    if (failedSync) {
+      return NextResponse.json(
+        {
+          error: `Planos salvos, mas falha ao sincronizar lojas do plano ${failedSync.planId}: ${failedSync.error}`,
+          plans: data || normalized,
+          syncResults,
+        },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ plans: data || normalized, syncResults });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || 'Erro ao salvar planos' }, { status: 500 });
   }

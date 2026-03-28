@@ -89,8 +89,11 @@ export default function CheckoutFlow({
       payment_options: normalizedPayment,
       pix_key: data?.pix_key || null,
       min_order_delivery: data?.min_order_delivery || 0,
+      free_shipping_threshold: data?.free_shipping_threshold || 0,
       schedule_delivery: data?.schedule_delivery || null,
-      delivery_instructions: data?.delivery_instructions || null
+      delivery_instructions: data?.delivery_instructions || null,
+      base_city: data?.base_city || null,
+      delivery_city_rules: data?.delivery_city_rules || [],
     }
   }, [storeId])
 
@@ -113,7 +116,30 @@ export default function CheckoutFlow({
           setConfigError('Loja não encontrada. Usando valores padrão.')
           setStoreConfig(normalizeStoreConfig(null))
         } else {
-          setStoreConfig(normalizeStoreConfig(data))
+          const normalizedStoreConfig = normalizeStoreConfig(data)
+
+          try {
+            const deliveryResponse = await fetch(`/api/store/delivery-settings?storeId=${encodeURIComponent(storeId)}`, {
+              cache: 'no-store',
+            })
+            const deliveryPayload = await deliveryResponse.json()
+
+            if (deliveryResponse.ok && deliveryPayload?.settings) {
+              const settings = deliveryPayload.settings
+              setStoreConfig(normalizeStoreConfig({
+                ...data,
+                min_order_delivery: settings.min_order_delivery,
+                free_shipping_threshold: settings.free_shipping_threshold,
+                delivery_options: settings.delivery_options,
+                base_city: settings.base_city,
+                delivery_city_rules: settings.extra_cities || [],
+              }))
+            } else {
+              setStoreConfig(normalizedStoreConfig)
+            }
+          } catch {
+            setStoreConfig(normalizedStoreConfig)
+          }
           setConfigError(null)
         }
       } catch (err: any) {
