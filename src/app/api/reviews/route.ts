@@ -169,7 +169,7 @@ export async function GET(request: NextRequest) {
 
     // Overrides legados (opcional). Orgânico sempre tem prioridade.
     let overrideRows: any[] = []
-    let overridesResult = await supabaseAdmin
+    let overridesResult: any = await supabaseAdmin
       .from('store_rating_overrides')
       .select('store_id, store_ref, avg_rating_legacy, total_reviews_legacy, active')
       .eq('active', true)
