@@ -109,6 +109,7 @@ export default function CadastroLogistaPage() {
             }
 
             // Criar store
+            const safePhotoLimit = Math.max(1, Number(planDefaults.photo_limit || 0));
             const { error: storeError } = await supabase
               .from("stores")
               .insert({
@@ -117,6 +118,8 @@ export default function CadastroLogistaPage() {
                 phone,
                 status: "pending",
                 ...planDefaults,
+                photo_limit: safePhotoLimit,
+                landing_photo_urls: [],
               });
             if (storeError) {
               console.warn("Erro ao salvar store no Supabase:", storeError);

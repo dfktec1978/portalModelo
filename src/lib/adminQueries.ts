@@ -596,6 +596,12 @@ export async function createStore(storeId: string, data: Partial<StoreDoc>) {
     return { id: storeId };
   } else {
     const planDefaults = getPlanDefaults((data as any).plan);
+    const safePhotoLimit = Math.max(
+      1,
+      Number.isFinite(Number((data as any).photo_limit ?? planDefaults.photo_limit))
+        ? Number((data as any).photo_limit ?? planDefaults.photo_limit)
+        : Number(planDefaults.photo_limit || 1),
+    );
     const insertData: any = {
       id: storeId,
       store_name: (data as any).storeName || (data as any).store_name || null,
@@ -608,8 +614,9 @@ export async function createStore(storeId: string, data: Partial<StoreDoc>) {
       plan: (data as any).plan || planDefaults.plan,
       plan_status: (data as any).plan_status || planDefaults.plan_status,
       product_limit: (data as any).product_limit ?? planDefaults.product_limit,
-      photo_limit: (data as any).photo_limit ?? planDefaults.photo_limit,
+      photo_limit: safePhotoLimit,
       priority_weight: (data as any).priority_weight ?? planDefaults.priority_weight,
+      landing_photo_urls: [],
     };
     const { data: result, error } = await supabase!.from('stores').insert([insertData]).select();
     if (error) throw error;

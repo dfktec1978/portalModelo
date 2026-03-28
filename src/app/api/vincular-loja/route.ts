@@ -10,6 +10,7 @@ export async function POST(req: Request) {
   try {
     const { userId } = await req.json();
     const planDefaults = await getServerPlanDefaults('presenca');
+    const safePhotoLimit = Math.max(1, Number(planDefaults.photo_limit || 0));
     
     if (!userId) {
       return NextResponse.json({ error: 'userId required' }, { status: 400 });
@@ -25,6 +26,8 @@ export async function POST(req: Request) {
         owner_id: userId,
         status: 'approved',
         ...planDefaults,
+        photo_limit: safePhotoLimit,
+        landing_photo_urls: [],
         created_at: new Date().toISOString()
       }
     ];

@@ -180,6 +180,7 @@ export default function CadastroPage() {
           console.log('🏪 Criando loja:', storeName);
           const normalizedPlan = normalizeStorePlan(selectedPlan);
           const planDefaults = getPlanDefaults(normalizedPlan, planConfigMap);
+          const safePhotoLimit = Math.max(1, Number(planDefaults.photo_limit || 0));
           
           const storeSlug = storeName
             .toLowerCase()
@@ -201,6 +202,8 @@ export default function CadastroPage() {
               category: storeCategory,
               status: "pending",
               ...planDefaults,
+              photo_limit: safePhotoLimit,
+              landing_photo_urls: [],
             });
 
           if (storeError) {
